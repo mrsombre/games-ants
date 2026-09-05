@@ -3,6 +3,8 @@
 Браузерная игра про муравейник, вдохновлённая механиками Fallout Shelter.
 Сейчас готов только минимальный каркас: React-страница и Hono API на Cloudflare Workers.
 
+Production: [games-ants.warmvibes.workers.dev](https://games-ants.warmvibes.workers.dev/).
+
 ## Локальный запуск
 
 Нужны Node.js 24+ и pnpm 11+. Версия pnpm зафиксирована в `packageManager`.
@@ -47,5 +49,14 @@ specs/plans/   # Планы реализации и архив завершён�
 Подробнее: [разработка](./docs/development.md), [концепция игры](./docs/plan.md),
 [сравнение движков](./docs/engine-comparison.md).
 
+## Публикация
+
+```sh
+pnpm run deploy
+```
+
+Команда собирает frontend и Worker, затем запускает Wrangler с конфигурацией из сборки.
+Требуется авторизация Cloudflare. Проверка без публикации: `pnpm run deploy --dry-run`.
+
 Игровые механики, сохранения и автономный HTML ещё не реализованы.
-Деплой в Cloudflare не выполнялся; удалённые ресурсы не настроены.
+Первый деплой в Cloudflare успешно выполнен пользователем 5 сентября 2026 года.

@@ -7,6 +7,9 @@ tags: [pnpm, vite, cloudflare-workers, react, hono]
 
 # Локальная разработка
 
+Production: [games-ants.warmvibes.workers.dev](https://games-ants.warmvibes.workers.dev/).
+Первый успешный деплой подтверждён пользователем 5 сентября 2026 года.
+
 ## Основа
 
 Каркас адаптирован из пользовательского `tma-template-cf/docs/scaffold`: pnpm workspace,
@@ -91,6 +94,10 @@ Vite создаёт `apps/frontend/dist/client/` и `apps/frontend/dist/games_an
 [Cloudflare: Static Assets](https://developers.cloudflare.com/workers/vite-plugin/reference/static-assets/).
 
 Записи `dist/`, `.wrangler/`, `worker-configuration.d.ts` и `tmp/` игнорируются Git.
-Команды деплоя и автоматическая публикация в текущий bootstrap не включены.
+Для публикации предусмотрена команда `pnpm run deploy`: сначала она выполняет сборку,
+затем `wrangler deploy --config apps/frontend/dist/games_ants/wrangler.json`.
+Используется выходная конфигурация с собранным Worker и static assets.
+Для проверки без публикации: `pnpm run deploy --dry-run`. Реальный deploy требует авторизации
+Cloudflare; автоматическая публикация не настроена.
 Автономная сборка в один HTML и localStorage-сохранения остаются в игровом плане;
 обычный результат `pnpm build` пока предназначен для HTTP, а не `file://`.

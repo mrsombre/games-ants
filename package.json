@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "pnpm --filter frontend dev",
     "build": "pnpm --filter frontend build",
+    "deploy": "pnpm build && wrangler deploy --config apps/frontend/dist/games_ants/wrangler.json",
     "preview": "pnpm --filter frontend preview",
     "check": "biome check --write .",
     "check:ci": "biome check .",
