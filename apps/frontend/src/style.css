@@ -340,3 +340,62 @@ a:focus-visible {
     display: none;
   }
 }
+
+.recruitment {
+  margin-left: auto;
+  padding-left: 18px;
+  border-left: 1px solid #667152;
+}
+.command-button small {
+  font-size: 9px;
+  white-space: nowrap;
+}
+.command-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.command-button:disabled:hover {
+  background: #424735;
+  border-color: #667052;
+}
+@media (max-width: 1100px) {
+  .command-title {
+    display: none;
+  }
+  .command-inner {
+    gap: 12px;
+  }
+}
+@media (max-width: 800px) {
+  .command-description {
+    display: none;
+  }
+  .command-inner {
+    flex-wrap: wrap;
+  }
+  .recruitment {
+    padding-left: 10px;
+  }
+}
+@media (max-width: 580px) {
+  .command-button {
+    width: 70px;
+    height: 70px;
+  }
+  .command-button svg {
+    width: 32px;
+    height: 32px;
+  }
+  .recruitment {
+    width: 100%;
+    border-left: 0;
+    padding: 0;
+    justify-content: flex-end;
+  }
+  .undo {
+    margin-left: auto;
+  }
+  .workspace {
+    padding-bottom: 210px;
+  }
+}

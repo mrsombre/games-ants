@@ -1,6 +1,8 @@
 import { Application, Container, Graphics, Text } from "pixi.js";
 import { COLS, type Colony, key, placementError, ROWS, roomSpan, type Tool } from "./colony";
 
+import { type Game, roles } from "./simulation";
+
 const CELL = 52;
 const WIDTH = COLS * CELL;
 const SURFACE = 260;
@@ -105,6 +107,7 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
   const hover = new Graphics();
   world.addChild(hover);
   let colony: Colony = {};
+  let planned: Colony = {};
   let tool: Tool = "corridor";
   let active: { x: number; y: number } | null = null;
   function updateHover() {
@@ -112,15 +115,16 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
     if (!active) return;
     const { x, y } = active;
     if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return;
-    const valid = !placementError(colony, x, y, tool);
+    const valid = !placementError(planned, x, y, tool);
     hover
       .roundRect(x * CELL + 3, SURFACE + y * CELL + 3, CELL - 6, CELL - 6, 7)
       .fill({ color: valid ? 0xd8dd8d : 0xd98470, alpha: 0.28 })
       .stroke({ color: valid ? 0xe8ecac : 0xdf9a86, width: 2 });
   }
-  function render(next: Colony, nextTool: Tool) {
+  function render(next: Colony, nextTool: Tool, nextPlanned: Colony = next) {
     tool = nextTool;
     colony = next;
+    planned = nextPlanned;
     for (const child of tiles.removeChildren()) child.destroy();
     const g = new Graphics();
     tiles.addChild(g);
@@ -132,7 +136,7 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
         if (!tile) {
           if (y === 0) continue;
           g.rect(px + 1, py + 1, CELL - 2, CELL - 2).stroke({ color: 0xa09170, alpha: 0.1, width: 1 });
-          if (!placementError(colony, x, y, tool)) {
+          if (!placementError(planned, x, y, tool)) {
             g.roundRect(px + 5, py + 5, CELL - 10, CELL - 10, 7).fill({ color: 0xcac08e, alpha: 0.045 });
             g.moveTo(px + 23, py + 26)
               .lineTo(px + 29, py + 26)
@@ -220,6 +224,69 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
       }
     updateHover();
   }
+  const construction = new Graphics();
+  const creatures = new Container();
+  world.addChild(construction, creatures);
+  const sprites = new Map<number, Graphics>();
+  function renderSimulation(game: Game, time: number) {
+    construction.clear();
+    for (const [id, blueprint] of Object.entries(game.blueprints)) {
+      const [x = 0, y = 0] = id.split(",").map(Number);
+      const px = x * CELL,
+        py = SURFACE + y * CELL;
+      const inset = blueprint.tile === "corridor" ? 18 : 5;
+      construction
+        .roundRect(px + inset, py + inset, CELL - inset * 2, CELL - inset * 2, 3)
+        .fill({ color: 0x55bce9, alpha: 0.2 })
+        .stroke({ color: 0x8cdaff, width: 1.5 });
+      construction
+        .rect(px + 6, py + 44, 40, 4)
+        .fill(0x172c39)
+        .rect(px + 6, py + 44, 40 * blueprint.progress, 4)
+        .fill(0x8cdaff);
+      for (let i = 0; i < Math.min(blueprint.workers, 8); i++)
+        construction.circle(px + 7 + i * 5, py + 8, 1.5).fill(0xf1cd77);
+    }
+    for (const ant of game.ants) {
+      let sprite = sprites.get(ant.id);
+      if (!sprite) {
+        sprite = new Graphics();
+        sprites.set(ant.id, sprite);
+        creatures.addChild(sprite);
+      }
+      sprite.visible = ant.phase !== "away";
+      if (!sprite.visible) continue;
+      sprite.clear();
+      const { color, size } = roles[ant.role];
+      const moving = ant.route.length > 0 || ant.working;
+      for (const side of [-1, 1])
+        for (let leg = 0; leg < 3; leg++) {
+          const swing = moving ? Math.sin(time * 15 + leg * 2 + side * 2) * 2 : 0;
+          sprite
+            .moveTo(-3 + leg * 3, 0)
+            .lineTo(-7 + leg * 6 + swing, side * 5)
+            .lineTo(-10 + leg * 9 + swing, side * 9)
+            .stroke({ color, width: 1.5, cap: "round" });
+        }
+      sprite
+        .ellipse(-8, 0, 6, 4)
+        .fill(color)
+        .ellipse(0, 0, 4, 2.8)
+        .fill(color)
+        .circle(8, 0, ant.role === "warrior" ? 5 : 3.5)
+        .fill(color);
+      sprite.moveTo(10, -2).lineTo(15, -6).moveTo(10, 2).lineTo(15, 6).stroke({ color, width: 1.2 });
+      sprite.circle(9, -1.5, 1).fill(0x241f1c);
+      if (ant.role === "worker") sprite.rect(-3, -3, 4, 6).fill(0xf3d581);
+      if (ant.role === "warrior")
+        sprite.moveTo(11, -3).lineTo(15, -2).moveTo(11, 3).lineTo(15, 2).stroke({ color: 0xf4c1a3, width: 2 });
+      if (ant.cargo) sprite.ellipse(17, 0, 5, 3).fill(0xa7d767);
+      sprite.scale.set(size);
+      // Small per-ant offsets make workers sharing a site visible inside the passage.
+      sprite.position.set((ant.x + 0.5) * CELL, SURFACE + (ant.y + 0.5) * CELL + ((ant.id % 3) - 1) * 3);
+      sprite.rotation = ant.heading;
+    }
+  }
   const label = new Text({
     text: "ВХОД В МУРАВЕЙНИК",
     style: { fontFamily: "sans-serif", fontSize: 10, letterSpacing: 2, fill: 0xece8cc },
@@ -259,6 +326,7 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
   app.canvas.style.display = "block";
   return {
     render,
+    renderSimulation,
     destroy: () => {
       app.canvas.removeEventListener("pointermove", move);
       app.canvas.removeEventListener("pointerdown", down);

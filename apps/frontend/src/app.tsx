@@ -1,38 +1,37 @@
 import { useEffect, useRef, useState } from "react";
-import { type Colony, initialColony, isRoom, key, placementError, roomCount, type Tool } from "./game/colony";
+import { roomCount, type Tool } from "./game/colony";
 import { createScene } from "./game/scene";
+import {
+  cancelLastBlueprint,
+  createGame,
+  planBuild,
+  plannedColony,
+  type Role,
+  recruit,
+  roles,
+  stepGame,
+} from "./game/simulation";
 
 export function App() {
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<Awaited<ReturnType<typeof createScene>> | null>(null);
-  const [colony, setColony] = useState<Colony>(() => ({ ...initialColony }));
+  const game = useRef(createGame());
+  const [, refresh] = useState(0);
   const [tool, setTool] = useState<Tool>("corridor");
-  const [message, setMessage] = useState("Выбери клетку с плюсом — расширим наш дом!");
+  const currentTool = useRef(tool);
+  currentTool.current = tool;
+  const [message, setMessage] = useState("Поставь чертёж — рабочие сами начнут строить!");
   const [error, setError] = useState(false);
   const [ready, setReady] = useState(false);
-  const state = useRef({ colony, tool });
-  state.current = { colony, tool };
   useEffect(() => {
     if (!host.current) return;
     let disposed = false;
     let instance: Awaited<ReturnType<typeof createScene>> | undefined;
+    let frame = 0;
     void createScene(host.current, (x, y) => {
-      const current = state.current;
-      const reason = placementError(current.colony, x, y, current.tool);
-      if (reason) {
-        setMessage(reason);
-        return;
-      }
-      const next = { ...current.colony, [key(x, y)]: current.tool };
-      state.current = { ...current, colony: next };
-      setColony(next);
-      setMessage(
-        current.tool === "room"
-          ? isRoom(current.colony[key(x - 1, y)]) || isRoom(current.colony[key(x + 1, y)])
-            ? "Комната стала просторнее!"
-            : "Новая комната готова. Здесь будет уютно!"
-          : "Коридор готов. Теперь можно копать дальше!",
-      );
+      const reason = planBuild(game.current, x, y, currentTool.current);
+      setMessage(reason ?? "Чертёж поставлен. Рабочие строят, когда к нему готов проход.");
+      refresh((n) => n + 1);
     })
       .then((result) => {
         instance = result;
@@ -41,31 +40,57 @@ export function App() {
           return;
         }
         scene.current = result;
-        result.render(state.current.colony, state.current.tool);
         setReady(true);
+        let last = performance.now(),
+          accumulator = 0,
+          uiTime = 0,
+          revision = -1;
+        let renderedTool: Tool | undefined;
+        const tick = (now: number) => {
+          // Pause in background; do not simulate hours on return to the tab.
+          accumulator += Math.min((now - last) / 1000, 0.1);
+          last = now;
+          while (accumulator >= 0.05) {
+            stepGame(game.current, 0.05);
+            accumulator -= 0.05;
+            uiTime += 0.05;
+          }
+          if (revision !== game.current.revision || renderedTool !== currentTool.current) {
+            revision = game.current.revision;
+            renderedTool = currentTool.current;
+            result.render(game.current.colony, currentTool.current, plannedColony(game.current));
+          }
+          result.renderSimulation(game.current, now / 1000);
+          if (uiTime >= 0.2) {
+            refresh((n) => n + 1);
+            uiTime = 0;
+          }
+          frame = requestAnimationFrame(tick);
+        };
+        frame = requestAnimationFrame(tick);
       })
       .catch(() => {
         if (!disposed) setError(true);
       });
     return () => {
       disposed = true;
+      cancelAnimationFrame(frame);
       instance?.destroy();
       scene.current = null;
     };
   }, []);
-  useEffect(() => {
-    scene.current?.render(colony, tool);
-  }, [colony, tool]);
+  const { colony, ants, food, blueprints } = game.current;
   const rooms = roomCount(colony);
-  const corridors = Object.values(colony).filter((tile) => tile === "corridor").length;
   function undo() {
-    const positions = Object.keys(colony).filter((position) => !initialColony[position]);
-    const last = positions.at(-1);
-    if (!last) return;
-    const next = { ...colony };
-    delete next[last];
-    setColony(next);
-    setMessage("Последняя постройка отменена");
+    cancelLastBlueprint(game.current);
+    refresh((n) => n + 1);
+    setMessage("Последний чертёж отменён");
+  }
+  function hire(role: Role) {
+    setMessage(
+      recruit(game.current, role) ? `${roles[role].label} появился у матки!` : "Не хватает еды — дождись разведчика",
+    );
+    refresh((n) => n + 1);
   }
   return (
     <main className="game">
@@ -84,17 +109,17 @@ export function App() {
           </div>
           <div>
             <span className="stat-icon">⋮</span>
-            <strong>{corridors}</strong>
-            <span>Коридоры</span>
+            <strong data-testid="food">{food}</strong>
+            <span>Еда</span>
           </div>
           <div className="queen-stat">
             <span className="stat-icon">♛</span>
-            <strong>1</strong>
-            <span>матка</span>
+            <strong>{ants.length}</strong>
+            <span>Муравьи</span>
           </div>
         </div>
         <span className="mode">
-          <i /> Свободное строительство
+          <i /> Колония живёт
         </span>
       </header>
       <section className="workspace">
@@ -103,7 +128,10 @@ export function App() {
             <span>
               <i /> Лесная поляна
             </span>
-            <span>ПЕРВЫЙ МУРАВЕЙНИК</span>
+            <span>
+              Чертежи: {Object.keys(blueprints).length} · В разведке:{" "}
+              {ants.filter((ant) => ant.phase === "away").length}
+            </span>
           </div>
           <div className="canvas-wrap">
             <div ref={host} />
@@ -117,7 +145,7 @@ export function App() {
             <span className="status" role="status">
               {message}
             </span>
-            <span className="mouse-hint">ЛКМ · построить</span>
+            <span className="mouse-hint">ЛКМ · чертёж</span>
           </div>
         </div>
       </section>
@@ -165,17 +193,52 @@ export function App() {
                 ? "Продолжай проход от другого коридора."
                 : "Строй у коридора. Расширяй влево и вправо до ×4."}
             </p>
-            <small>ЛКМ по клетке · Бесплатно</small>
+            <small>{tool === "corridor" ? "20" : "30"} с / рабочий · Вместе быстрее</small>
           </div>
           <button
             type="button"
             className="undo"
             onClick={undo}
-            disabled={Object.keys(colony).length === Object.keys(initialColony).length}
-            title="Отменить последнюю постройку"
+            disabled={!Object.keys(blueprints).length}
+            title="Отменить последний чертёж"
           >
             ↶ <span>Отменить</span>
           </button>
+          <fieldset className="command-buttons recruitment" aria-label="Найм муравьёв">
+            {(Object.keys(roles) as Role[]).map((role) => (
+              <button
+                type="button"
+                className="command-button"
+                key={role}
+                disabled={food < roles[role].cost}
+                onClick={() => hire(role)}
+                aria-label={`${roles[role].label} — ${roles[role].cost} еды`}
+                title={`${roles[role].label}: ${ants.filter((ant) => ant.role === role).length} в колонии`}
+              >
+                <svg viewBox="0 0 48 36" aria-hidden="true" style={{ color: `#${roles[role].color.toString(16)}` }}>
+                  <g
+                    transform={`translate(24 18) scale(${roles[role].size})`}
+                    fill="currentColor"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      d="M-3 0l-8-7-5-4M0 0l0-9 4-4M3 0l10-6 5-5M-3 0l-8 7-5 4M0 0l0 9 4 4M3 0l10 6 5 5"
+                      fill="none"
+                    />
+                    <ellipse cx="-10" cy="0" rx="7" ry="5" />
+                    <ellipse cx="0" cy="0" rx="5" ry="3" />
+                    <circle cx="10" cy="0" r="5" />
+                    <path d="M13-2l7-5m-7 9 7 5" />
+                  </g>
+                </svg>
+                <span>{roles[role].label}</span>
+                <small>
+                  {roles[role].cost} еды · {ants.filter((ant) => ant.role === role).length} шт.
+                </small>
+              </button>
+            ))}
+          </fieldset>
         </div>
       </section>
     </main>
