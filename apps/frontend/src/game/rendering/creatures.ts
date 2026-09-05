@@ -45,6 +45,11 @@ function drawEggs(g: Graphics, game: Game) {
         .fill(0xf5e8bc)
         .stroke({ color: 0xc5ad75, width: 1 });
     }
+    const spawn = game.spawns.find((entry) => entry.eggId === egg.id);
+    if (spawn) {
+      g.roundRect(x - 16, y + 14, 32, 4, 1).fill(0x172c39);
+      g.roundRect(x - 16, y + 14, 32 * spawn.progress, 4, 1).fill(roles[spawn.role].color);
+    }
   }
   const x = HOME.x * CELL + 10;
   const y = SURFACE + HOME.y * CELL + 43;

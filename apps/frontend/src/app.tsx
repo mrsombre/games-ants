@@ -1,9 +1,10 @@
 import { type Role, roles } from "./game/model";
+import { spawnableEggs } from "./game/spawning";
 import { CommandPanel } from "./ui/command-panel";
 import { useGame } from "./ui/use-game";
 
 export function App() {
-  const { host, game, tool, setTool, message, error, ready, hire } = useGame();
+  const { host, game, tool, setTool, message, error, ready, spawnAnt } = useGame();
   const { ants, food, blueprints } = game;
   return (
     <main className="game">
@@ -78,7 +79,13 @@ export function App() {
           </div>
         </div>
       </section>
-      <CommandPanel tool={tool} setTool={setTool} food={food} hire={hire} />
+      <CommandPanel
+        tool={tool}
+        setTool={setTool}
+        food={food}
+        hasEggSource={spawnableEggs(game).length > 0}
+        spawnAnt={spawnAnt}
+      />
     </main>
   );
 }

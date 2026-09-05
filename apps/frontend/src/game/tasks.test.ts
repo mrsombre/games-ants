@@ -56,6 +56,13 @@ describe("colony task auction", () => {
     assignTasks(game);
     expect(game.ants.filter((ant) => ant.task)).toHaveLength(2);
   });
+  it("does not transport an egg reserved for spawning", () => {
+    const game = workers();
+    game.eggs = [{ id: 1, location: { cell: "9,2" } }];
+    game.spawns = [{ eggId: 1, cell: "9,2", role: "worker", progress: 0 }];
+    assignTasks(game);
+    expect(game.ants.every((ant) => ant.task === null)).toBe(true);
+  });
   it("keeps a carrier on its task when a higher-priority blueprint appears", () => {
     const game = workers();
     game.eggs = [{ id: 1, location: { cell: "9,2" } }];

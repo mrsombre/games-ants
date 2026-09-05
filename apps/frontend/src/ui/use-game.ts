@@ -4,7 +4,8 @@ import { planBuild } from "../game/construction";
 import { demolish } from "../game/demolition";
 import { type Role, roles, SIMULATION_STEP } from "../game/model";
 import { createScene } from "../game/scene";
-import { createGame, recruit, stepGame } from "../game/simulation";
+import { createGame, stepGame } from "../game/simulation";
+import { startSpawn } from "../game/spawning";
 
 export function useGame() {
   const host = useRef<HTMLDivElement>(null);
@@ -67,9 +68,16 @@ export function useGame() {
       instance?.destroy();
     };
   }, [game]);
-  function hire(role: Role) {
-    setMessage(recruit(game, role) ? `${roles[role].label} появился у матки!` : "Не хватает еды — дождись разведчика");
+  function spawnAnt(role: Role) {
+    const started = startSpawn(game, role);
+    setMessage(
+      started
+        ? `${roles[role].label}: яйцо выбрано, вылупление через 10 секунд`
+        : game.food < roles[role].cost
+          ? "Не хватает еды — дождись разведчика"
+          : "Нет свободной кладки — дождись яйца или завершения переноса",
+    );
     refresh((n) => n + 1);
   }
-  return { host, game, tool, setTool, message, error, ready, hire };
+  return { host, game, tool, setTool, message, error, ready, spawnAnt };
 }

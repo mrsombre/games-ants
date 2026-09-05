@@ -1,8 +1,9 @@
 import { COLS, initialColony } from "./colony";
 import { advanceConstruction } from "./construction";
 import { advanceEggs } from "./eggs";
-import { type Ant, ENTRANCE, type Game, HOME, type Role, roles, type Scout, SURFACE_EXIT } from "./model";
+import { type Ant, ENTRANCE, type Game, HOME, type Role, type Scout, SURFACE_EXIT } from "./model";
 import { move, routeTo } from "./navigation";
+import { advanceSpawns } from "./spawning";
 import { assignTasks, updateWorker } from "./tasks";
 
 function createAnt(id: number, role: Role): Ant {
@@ -25,19 +26,13 @@ export function createGame(): Game {
     eggs: [],
     eggTimer: 0,
     nextEggId: 1,
+    spawns: [],
     food: 5,
     nextId: initialRoles.length + 1,
     revision: 0,
     deliveries: 0,
   };
 }
-export function recruit(game: Game, role: Role) {
-  if (game.food < roles[role].cost) return false;
-  game.food -= roles[role].cost;
-  game.ants.push(createAnt(game.nextId++, role));
-  return true;
-}
-
 function updateScout(game: Game, ant: Scout, seconds: number, random: () => number) {
   if (ant.route.length) {
     move(ant, seconds);
@@ -91,4 +86,5 @@ export function stepGame(game: Game, seconds: number, random: () => number = Mat
     }
   }
   advanceConstruction(game, seconds);
+  advanceSpawns(game, seconds, createAnt);
 }

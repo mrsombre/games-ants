@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { cancelLastBlueprint, planBuild } from "./construction";
 import type { Game } from "./model";
 import { routeTo } from "./navigation";
-import { createGame, recruit, stepGame } from "./simulation";
+import { createGame, stepGame } from "./simulation";
+import { startSpawn } from "./spawning";
 
 function advance(game: Game, seconds: number, random = () => 0.5) {
   for (let i = 0; i < Math.round(seconds / 0.05); i++) stepGame(game, 0.05, random);
@@ -17,18 +18,12 @@ function builders(count: number) {
   return game;
 }
 describe("living colony", () => {
-  it("starts with all roles and charges exact recruitment costs without going into debt", () => {
+  it("starts with all roles and resources", () => {
     const game = createGame();
     expect(game.food).toBe(5);
     expect(game.ants.map((ant) => ant.role)).toEqual(["worker", "worker", "worker", "scout", "warrior"]);
-    expect(recruit(game, "scout")).toBe(true);
-    expect(game.food).toBe(3);
-    expect(recruit(game, "warrior")).toBe(true);
-    expect(game.food).toBe(0);
-    expect(recruit(game, "worker")).toBe(false);
-    game.food = 1;
-    expect(recruit(game, "worker")).toBe(true);
-    expect(game.food).toBe(0);
+    expect(game.eggs).toEqual([]);
+    expect(game.spawns).toEqual([]);
   });
   it("marks blueprints, validates their topology and keeps them unwalkable", () => {
     const game = builders(1);
@@ -92,8 +87,8 @@ describe("living colony", () => {
     planBuild(game, 8, 5, "corridor");
     advance(game, 60);
     expect(game.blueprints["8,5"]?.progress).toBe(0);
-    recruit(game, "worker");
-    advance(game, 10);
+    expect(startSpawn(game, "worker")).toBe(true);
+    advance(game, 15);
     expect(game.blueprints["8,5"]?.progress).toBeGreaterThan(0);
     cancelLastBlueprint(game);
     advance(game, 30);

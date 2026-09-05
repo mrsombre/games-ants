@@ -5,9 +5,10 @@ type Props = {
   tool: Tool;
   setTool: (tool: Tool) => void;
   food: number;
-  hire: (role: Role) => void;
+  hasEggSource: boolean;
+  spawnAnt: (role: Role) => void;
 };
-export function CommandPanel({ tool, setTool, food, hire }: Props) {
+export function CommandPanel({ tool, setTool, food, hasEggSource, spawnAnt }: Props) {
   return (
     <section className="command-panel" aria-label="Строительство">
       <div className="command-inner">
@@ -69,24 +70,24 @@ export function CommandPanel({ tool, setTool, food, hire }: Props) {
           </svg>
           <span>Сломать</span>
         </button>
-        <Recruitment food={food} hire={hire} />
+        <Spawning food={food} hasEggSource={hasEggSource} spawnAnt={spawnAnt} />
       </div>
     </section>
   );
 }
 
-function Recruitment({ food, hire }: Pick<Props, "food" | "hire">) {
+function Spawning({ food, hasEggSource, spawnAnt }: Pick<Props, "food" | "hasEggSource" | "spawnAnt">) {
   return (
-    <fieldset className="command-buttons recruitment" aria-label="Найм муравьёв">
+    <fieldset className="command-buttons recruitment" aria-label="Выведение муравьёв">
       {(Object.keys(roles) as Role[]).map((role) => (
         <button
           type="button"
           className="command-button"
           key={role}
-          disabled={food < roles[role].cost}
-          onClick={() => hire(role)}
-          aria-label={`${roles[role].label} — ${roles[role].cost} еды`}
-          title={`${roles[role].label} — ${roles[role].cost} еды`}
+          disabled={food < roles[role].cost || !hasEggSource}
+          onClick={() => spawnAnt(role)}
+          aria-label={`${roles[role].label} — ${roles[role].cost} еды и яйцо`}
+          title={`${roles[role].label} — ${roles[role].cost} еды и яйцо`}
         >
           <svg viewBox="0 0 48 36" aria-hidden="true" style={{ color: `#${roles[role].color.toString(16)}` }}>
             <g
@@ -103,7 +104,7 @@ function Recruitment({ food, hire }: Pick<Props, "food" | "hire">) {
             </g>
           </svg>
           <span>{roles[role].label}</span>
-          <small>{roles[role].cost} еды</small>
+          <small>{roles[role].cost} еды + яйцо</small>
         </button>
       ))}
     </fieldset>

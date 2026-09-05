@@ -16,6 +16,7 @@ export type Warrior = MovingAnt & { role: "warrior"; phase: "home" | "patrol" };
 export type Ant = Worker | Scout | Warrior;
 export type Role = Ant["role"];
 export type Blueprint = { tile: BuildTool; progress: number; workers: number };
+export type Spawn = { eggId: number; cell: string; role: Role; progress: number };
 export type Game = {
   colony: Colony;
   blueprints: Record<string, Blueprint>;
@@ -23,6 +24,7 @@ export type Game = {
   eggs: Egg[];
   eggTimer: number;
   nextEggId: number;
+  spawns: Spawn[];
   food: number;
   nextId: number;
   revision: number;
@@ -35,6 +37,7 @@ export const roles = {
   warrior: { label: "Воин", cost: 3, color: 0xd47662, size: 1, speed: 1.5 },
 };
 export const EGG_SECONDS = 30;
+export const SPAWN_SECONDS = 10;
 export const buildSeconds = { corridor: 20, room: 30 };
 export const HOME: Point = { x: 10, y: 2 };
 export const ENTRANCE: Point = { x: 8, y: 0 };

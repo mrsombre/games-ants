@@ -21,6 +21,7 @@ function availableTasks(game: Game): Task[] {
     const nursery = new Set(nurseryCells(game).map((p) => key(p.x, p.y)));
     for (const egg of game.eggs) {
       if (!("cell" in egg.location) || !nursery.has(egg.location.cell)) continue;
+      if (game.spawns.some((spawn) => spawn.eggId === egg.id)) continue;
       if (game.ants.some((ant) => ant.role === "worker" && ant.task?.kind === "carry-egg" && ant.task.eggId === egg.id))
         continue;
       tasks.push({ kind: "carry-egg", eggId: egg.id, source: egg.location.cell, destination });
