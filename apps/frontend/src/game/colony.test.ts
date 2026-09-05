@@ -10,9 +10,9 @@ describe("construction", () => {
     expect(initialColony["10,2"]).toBe("queen");
   });
   it("only extends corridors from corridors", () => {
-    expect(placementError(initialColony, 8, 5)).toBeNull();
-    expect(placementError(initialColony, 5, 1)).toBeTruthy();
-    expect(placementError(initialColony, 12, 2)).toBeTruthy();
+    expect(placementError(initialColony, 8, 5, "corridor")).toBeNull();
+    expect(placementError(initialColony, 5, 1, "corridor")).toBeTruthy();
+    expect(placementError(initialColony, 12, 2, "corridor")).toBeTruthy();
   });
   it("extends a room horizontally up to four cells", () => {
     expect(placementError(initialColony, 5, 1, "room")).toBeNull();

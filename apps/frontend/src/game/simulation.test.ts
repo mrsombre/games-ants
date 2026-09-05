@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { cancelLastBlueprint, createGame, type Game, planBuild, recruit, routeTo, stepGame } from "./simulation";
+import { cancelLastBlueprint, planBuild } from "./construction";
+import type { Game } from "./model";
+import { routeTo } from "./navigation";
+import { createGame, recruit, stepGame } from "./simulation";
 
 function advance(game: Game, seconds: number, random = () => 0.5) {
   for (let i = 0; i < Math.round(seconds / 0.05); i++) stepGame(game, 0.05, random);
@@ -67,7 +70,7 @@ describe("living colony", () => {
     expect(game.blueprints["7,3"]?.progress).toBe(0);
     cancelLastBlueprint(game);
     stepGame(game, 0.05);
-    expect(game.ants[0]?.target).toBe("7,3");
+    expect(game.ants.find((ant) => ant.role === "worker")?.target).toBe("7,3");
     expect(game.blueprints["7,3"]?.progress).toBe(0);
     advance(game, 1);
     expect(game.blueprints["7,3"]?.progress).toBeGreaterThan(0);
@@ -104,7 +107,7 @@ describe("living colony", () => {
     const game = createGame();
     game.ants = game.ants.filter((ant) => ant.role === "scout");
     const ant = game.ants[0];
-    if (!ant) throw new Error("missing scout");
+    if (ant?.role !== "scout") throw new Error("missing scout");
     for (let i = 0; i < 1000 && ant.phase !== "away"; i++) stepGame(game, 0.05, () => rng);
     expect(ant.phase).toBe("away");
     expect(ant.x < 0 || ant.x > 17).toBe(true);
@@ -125,7 +128,8 @@ describe("living colony", () => {
     game.ants = game.ants.filter((ant) => ant.role === "warrior");
     advance(game, 10);
     const ant = game.ants[0];
-    expect(ant?.phase).toBe("patrol");
+    if (ant?.role !== "warrior") throw new Error("missing warrior");
+    expect(ant.phase).toBe("patrol");
     for (let i = 0; i < 100; i++) {
       stepGame(game, 0.05);
       expect(ant?.y).toBe(-0.7);
