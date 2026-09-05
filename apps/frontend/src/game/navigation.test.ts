@@ -22,7 +22,7 @@ it("spends movement distance along waypoints without cutting corners or overshoo
     x: 8,
     y: 1,
     heading: 0,
-    target: null,
+    task: null,
     working: false,
     route: [
       { x: 8, y: 2 },

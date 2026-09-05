@@ -56,7 +56,6 @@ function drawRoom(g: Graphics, colony: Colony, x: number, y: number) {
     .lineTo(px + 42, py + 43)
     .stroke({ color: 0xc2a36d, width: 2 });
   if (colony[key(x, y)] === "queen") drawQueen(g, px, py);
-  else for (let i = 0; i < 5; i++) g.ellipse(px + 15 + i * 5, py + 33 - (i % 2) * 5, 3, 4).fill(0xd6ba77);
 }
 function drawPassages(g: Graphics, colony: Colony, x: number, y: number) {
   const corridor = colony[key(x, y)] === "corridor";

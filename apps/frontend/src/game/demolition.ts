@@ -1,5 +1,6 @@
 import { type Colony, connected, isCell, isRoom, key, neighbors, roomSpan } from "./colony";
 import { plannedColony } from "./construction";
+import { roomCellOccupied } from "./eggs";
 import { ENTRANCE, type Game } from "./model";
 
 function staysConnected(colony: Colony, removed: string) {
@@ -25,6 +26,7 @@ export function demolitionError(game: Game, x: number, y: number): string | null
   const tile = colony[id];
   if (!tile) return "Здесь нечего ломать";
   if (y === 0) return "Вход в муравейник нельзя сломать";
+  if (roomCellOccupied(game, id)) return "Сначала освободи клетку от яиц или дождись доставки";
   if (tile === "queen") return "Клетку с маткой нельзя сломать";
   if (isRoom(tile)) {
     const span = roomSpan(colony, x, y);
@@ -59,7 +61,10 @@ export function demolish(game: Game, x: number, y: number) {
       if (index >= 0) ant.route = ant.route.slice(0, index);
     }
     if (ant.role === "worker") {
-      ant.target = null;
+      if (ant.task?.kind === "build") {
+        ant.task = null;
+        ant.route = ant.route.slice(0, 1);
+      }
       ant.working = false;
     }
   }

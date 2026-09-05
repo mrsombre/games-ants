@@ -1,7 +1,11 @@
 import type { BuildTool, Colony, Point } from "./colony";
 
 type MovingAnt = Point & { id: number; route: Point[]; heading: number };
-export type Worker = MovingAnt & { role: "worker"; target: string | null; working: boolean };
+export type WorkerTask =
+  | { kind: "build"; target: string; stand: Point }
+  | { kind: "carry-egg"; eggId: number; destination: string; phase: "pickup" | "delivery" };
+export type Worker = MovingAnt & { role: "worker"; task: WorkerTask | null; working: boolean };
+export type Egg = { id: number; location: { cell: string } | { carrier: number } };
 export type Scout = MovingAnt & {
   role: "scout";
   phase: "home" | "outbound" | "away" | "returning";
@@ -16,6 +20,9 @@ export type Game = {
   colony: Colony;
   blueprints: Record<string, Blueprint>;
   ants: Ant[];
+  eggs: Egg[];
+  eggTimer: number;
+  nextEggId: number;
   food: number;
   nextId: number;
   revision: number;
@@ -27,6 +34,7 @@ export const roles = {
   scout: { label: "Разведчик", cost: 2, color: 0x87cbbb, size: 0.65, speed: 2.4 },
   warrior: { label: "Воин", cost: 3, color: 0xd47662, size: 1, speed: 1.5 },
 };
+export const EGG_SECONDS = 30;
 export const buildSeconds = { corridor: 20, room: 30 };
 export const HOME: Point = { x: 10, y: 2 };
 export const ENTRANCE: Point = { x: 8, y: 0 };

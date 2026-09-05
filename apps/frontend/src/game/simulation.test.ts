@@ -70,7 +70,7 @@ describe("living colony", () => {
     expect(game.blueprints["7,3"]?.progress).toBe(0);
     cancelLastBlueprint(game);
     stepGame(game, 0.05);
-    expect(game.ants.find((ant) => ant.role === "worker")?.target).toBe("7,3");
+    expect(game.ants.find((ant) => ant.role === "worker")?.task).toMatchObject({ kind: "build", target: "7,3" });
     expect(game.blueprints["7,3"]?.progress).toBe(0);
     advance(game, 1);
     expect(game.blueprints["7,3"]?.progress).toBeGreaterThan(0);

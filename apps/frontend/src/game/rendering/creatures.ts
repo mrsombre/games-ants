@@ -1,16 +1,18 @@
 import { Container, Graphics } from "pixi.js";
 import { point } from "../colony";
-import { type Ant, type Game, roles } from "../model";
+import { type Ant, EGG_SECONDS, type Game, HOME, roles } from "../model";
 import { CELL, SURFACE } from "./layout";
 
 export function createCreatures() {
   const layer = new Container();
   const construction = new Graphics();
+  const eggs = new Graphics();
   const creatures = new Container();
-  layer.addChild(construction, creatures);
+  layer.addChild(construction, eggs, creatures);
   const sprites = new Map<number, Graphics>();
   function renderSimulation(game: Game, time: number) {
     drawBlueprints(construction, game.blueprints);
+    drawEggs(eggs, game);
     for (const ant of game.ants) {
       let sprite = sprites.get(ant.id);
       if (!sprite) {
@@ -20,10 +22,35 @@ export function createCreatures() {
       }
       sprite.visible = !(ant.role === "scout" && ant.phase === "away");
       if (!sprite.visible) continue;
-      drawAnt(sprite, ant, time);
+      drawAnt(
+        sprite,
+        ant,
+        time,
+        game.eggs.some((egg) => "carrier" in egg.location && egg.location.carrier === ant.id),
+      );
     }
   }
   return { layer, update: renderSimulation };
+}
+function drawEggs(g: Graphics, game: Game) {
+  g.clear();
+  for (const egg of game.eggs) {
+    if (!("cell" in egg.location)) continue;
+    const p = point(egg.location.cell);
+    const x = (p.x + 0.5) * CELL;
+    const y = SURFACE + (p.y + 0.5) * CELL;
+    g.ellipse(x, y + 7, 13, 4).fill({ color: 0x483921, alpha: 0.2 });
+    for (const offset of [-7, 0, 7]) {
+      g.ellipse(x + offset, y + (offset === 0 ? -2 : 2), 4, 6)
+        .fill(0xf5e8bc)
+        .stroke({ color: 0xc5ad75, width: 1 });
+    }
+  }
+  const x = HOME.x * CELL + 10;
+  const y = SURFACE + HOME.y * CELL + 43;
+  g.roundRect(x, y, CELL - 20, 3, 1).fill(0x695034);
+  const progress = (game.eggTimer / EGG_SECONDS) * (CELL - 20);
+  if (progress > 0) g.roundRect(x, y, progress, 3, 1).fill(0xf5e8bc);
 }
 function drawBlueprints(construction: Graphics, blueprints: Game["blueprints"]) {
   construction.clear();
@@ -45,7 +72,7 @@ function drawBlueprints(construction: Graphics, blueprints: Game["blueprints"]) 
       construction.circle(px + 7 + i * 5, py + 8, 1.5).fill(0xf1cd77);
   }
 }
-function drawAnt(sprite: Graphics, ant: Ant, time: number) {
+function drawAnt(sprite: Graphics, ant: Ant, time: number, carryingEgg: boolean) {
   sprite.clear();
   const { color, size } = roles[ant.role];
   const moving = ant.route.length > 0 || (ant.role === "worker" && ant.working);
@@ -68,6 +95,10 @@ function drawAnt(sprite: Graphics, ant: Ant, time: number) {
   sprite.moveTo(10, -2).lineTo(15, -6).moveTo(10, 2).lineTo(15, 6).stroke({ color, width: 1.2 });
   sprite.circle(9, -1.5, 1).fill(0x241f1c);
   if (ant.role === "worker") sprite.rect(-3, -3, 4, 6).fill(0xf3d581);
+  if (carryingEgg) {
+    for (const offset of [-4, 0, 4])
+      sprite.ellipse(18, offset, 5, 3).fill(0xf5e8bc).stroke({ color: 0xc5ad75, width: 0.7 });
+  }
   if (ant.role === "warrior")
     sprite.moveTo(11, -3).lineTo(15, -2).moveTo(11, 3).lineTo(15, 2).stroke({ color: 0xf4c1a3, width: 2 });
   if (ant.role === "scout" && ant.cargo) sprite.ellipse(17, 0, 5, 3).fill(0xa7d767);
