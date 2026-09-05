@@ -12,11 +12,12 @@ export type WorkerTask =
   | { kind: "carry-egg"; eggId: number; destination: string; phase: "pickup" | "delivery" };
 export type Worker = MovingAnt & { role: "worker"; task: WorkerTask | null; working: boolean };
 export type Egg = { id: number; location: { cell: string } | { carrier: number } };
+export type ScoutCargo = "apple" | "mushroom" | "caterpillar";
 export type Scout = MovingAnt & {
   role: "scout";
   phase: "home" | "outbound" | "away" | "returning";
   away: number;
-  cargo: number;
+  cargo: ScoutCargo | null;
 };
 export type Warrior = MovingAnt & { role: "warrior"; phase: "home" | "patrol" };
 export type Ant = Worker | Scout | Warrior;
@@ -42,6 +43,7 @@ export const roles = {
   scout: { label: "Разведчик", cost: 2, color: 0x87cbbb, size: 0.65, speed: 2.4 },
   warrior: { label: "Воин", cost: 3, color: 0xd47662, size: 1, speed: 1.5 },
 };
+export const scoutCargoFood: Record<ScoutCargo, number> = { apple: 1, mushroom: 1, caterpillar: 2 };
 export const EGG_SECONDS = 30;
 export const SPAWN_SECONDS = 10;
 export const WANDER_MIN_SECONDS = 5;

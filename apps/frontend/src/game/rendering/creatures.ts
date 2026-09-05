@@ -1,6 +1,6 @@
 import { Container, Graphics } from "pixi.js";
 import { point } from "../colony";
-import { type Ant, EGG_SECONDS, type Game, HOME, roles } from "../model";
+import { type Ant, EGG_SECONDS, type Game, HOME, roles, type ScoutCargo } from "../model";
 import { CELL, SURFACE } from "./layout";
 
 export function createCreatures() {
@@ -106,9 +106,44 @@ function drawAnt(sprite: Graphics, ant: Ant, time: number, carryingEgg: boolean)
   }
   if (ant.role === "warrior")
     sprite.moveTo(11, -3).lineTo(15, -2).moveTo(11, 3).lineTo(15, 2).stroke({ color: 0xf4c1a3, width: 2 });
-  if (ant.role === "scout" && ant.cargo) sprite.ellipse(17, 0, 5, 3).fill(0xa7d767);
+  if (ant.role === "scout" && ant.cargo) drawScoutCargo(sprite, ant.cargo);
   sprite.scale.set(size);
   // Small per-ant offsets make workers sharing a site visible inside the passage.
   sprite.position.set((ant.x + 0.5) * CELL, SURFACE + (ant.y + 0.5) * CELL + ((ant.id % 3) - 1) * 3);
   sprite.rotation = ant.heading;
+}
+
+function drawScoutCargo(g: Graphics, cargo: ScoutCargo) {
+  if (cargo === "apple") {
+    g.circle(21, 0, 8).fill(0x7da54c).stroke({ color: 0x4f6e31, width: 1.2 });
+    g.circle(18, -3, 2).fill({ color: 0xd8e6a3, alpha: 0.65 });
+    g.moveTo(21, -7).lineTo(19, -12).stroke({ color: 0x6f4c2c, width: 2, cap: "round" });
+    g.ellipse(23, -10, 5, 2.5).fill(0x587d3d);
+    return;
+  }
+  if (cargo === "mushroom") {
+    g.roundRect(18, -1, 7, 12, 3).fill(0xe4c998).stroke({ color: 0x9d744f, width: 1 });
+    g.ellipse(21.5, -4, 11, 7).fill(0xc77852).stroke({ color: 0x8f5038, width: 1.2 });
+    for (const [x, y] of [
+      [17, -5],
+      [22, -7],
+      [26, -3],
+    ] as const)
+      g.circle(x, y, 1.2).fill(0xf2d8a9);
+    return;
+  }
+  const segments = [
+    [17, 1],
+    [22, -1],
+    [27, 1],
+    [32, -1],
+  ] as const;
+  for (const [x, y] of segments) {
+    g.circle(x, y, 4.5).fill(0x8eae4e).stroke({ color: 0x587431, width: 1 });
+    g.moveTo(x - 1, y + 4)
+      .lineTo(x - 2, y + 7)
+      .stroke({ color: 0x587431, width: 1 });
+  }
+  g.circle(36, 0, 5).fill(0xa8c75e).stroke({ color: 0x587431, width: 1 });
+  g.circle(38, -1.5, 0.8).fill(0x302a26);
 }

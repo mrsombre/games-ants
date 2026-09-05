@@ -107,7 +107,11 @@ describe("living colony", () => {
   it("never connects rooms through vertical walls", () => {
     expect(routeTo({ "1,1": "room", "1,2": "room" }, { x: 1, y: 1 }, { x: 1, y: 2 })).toBeNull();
   });
-  it.each([0, 0.999999])("scouts leave the map, wait 5–60 seconds and deliver food at home (rng %s)", (rng) => {
+  it.each([
+    [0, "apple", 1],
+    [0.5, "mushroom", 1],
+    [0.999999, "caterpillar", 2],
+  ] as const)("scouts use rng %s to return with %s cargo", (rng, cargo, food) => {
     const game = createGame();
     game.ants = game.ants.filter((ant) => ant.role === "scout");
     const ant = game.ants[0];
@@ -119,11 +123,13 @@ describe("living colony", () => {
     expect(game.food).toBe(2);
     advance(game, 4.9, () => rng);
     expect(ant.phase).toBe("away");
-    for (let i = 0; i < 1600 && game.deliveries === 0; i++) stepGame(game, 0.05, () => rng);
+    for (let i = 0; i < 1200 && ant.phase !== "returning"; i++) stepGame(game, 0.05, () => rng);
+    expect(ant.cargo).toBe(cargo);
+    for (let i = 0; i < 400 && game.deliveries === 0; i++) stepGame(game, 0.05, () => rng);
     expect(game.deliveries).toBe(1);
-    expect(game.food).toBe(3 + Math.floor(rng * 3));
+    expect(game.food).toBe(2 + food);
     expect([ant.x, ant.y]).toEqual([10, 2]);
-    expect(ant.cargo).toBe(0);
+    expect(ant.cargo).toBeNull();
     for (let i = 0; i < 1000 && ant.phase !== "away"; i++) stepGame(game, 0.05, () => rng);
     expect(ant.phase).toBe("away");
   });

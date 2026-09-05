@@ -8,7 +8,9 @@ import {
   HOME,
   type Role,
   type Scout,
+  type ScoutCargo,
   SURFACE_EXIT,
+  scoutCargoFood,
   WANDER_MAX_SECONDS,
   WANDER_MIN_SECONDS,
 } from "./model";
@@ -22,7 +24,7 @@ function createAnt(id: number, role: Role, position: Point = HOME): Ant {
     case "worker":
       return { ...body, role, task: null, working: false };
     case "scout":
-      return { ...body, role, phase: "home", away: 0, cargo: 0 };
+      return { ...body, role, phase: "home", away: 0, cargo: null };
     case "warrior":
       return { ...body, role, phase: "home" };
   }
@@ -74,17 +76,23 @@ function updateScout(game: Game, ant: Scout, seconds: number, random: () => numb
       if (ant.away <= 0) {
         const route = routeTo(game.colony, ENTRANCE, HOME);
         if (!route) return;
-        ant.cargo = 1 + Math.floor(random() * 3);
+        ant.cargo = scoutCargo(random());
         ant.phase = "returning";
         ant.route = [SURFACE_EXIT, ENTRANCE, ...route];
       }
       return;
     case "returning":
-      game.food += ant.cargo;
+      if (ant.cargo) game.food += scoutCargoFood[ant.cargo];
       game.deliveries++;
-      ant.cargo = 0;
+      ant.cargo = null;
       ant.phase = "home";
   }
+}
+
+function scoutCargo(roll: number): ScoutCargo {
+  if (roll < 0.4) return "apple";
+  if (roll < 0.8) return "mushroom";
+  return "caterpillar";
 }
 // Call with fixed short steps. Travel time never contributes to construction.
 export function stepGame(game: Game, seconds: number, random: () => number = Math.random) {
