@@ -1,16 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { type Colony, initialColony, key, loadColony, placementError, saveColony, type Tool } from "./game/colony";
+import { type Colony, initialColony, key, placementError, type Tool } from "./game/colony";
 import { createScene } from "./game/scene";
 
 export function App() {
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<Awaited<ReturnType<typeof createScene>> | null>(null);
-  const [colony, setColony] = useState<Colony>(loadColony);
+  const [colony, setColony] = useState<Colony>(() => ({ ...initialColony }));
   const [tool, setTool] = useState<Tool>("corridor");
   const [message, setMessage] = useState("Выбери клетку с плюсом — расширим наш дом!");
   const [error, setError] = useState(false);
   const [ready, setReady] = useState(false);
-  const [saved, setSaved] = useState(true);
   const state = useRef({ colony, tool });
   state.current = { colony, tool };
   useEffect(() => {
@@ -27,7 +26,6 @@ export function App() {
       const next = { ...current.colony, [key(x, y)]: current.tool };
       state.current = { ...current, colony: next };
       setColony(next);
-      setSaved(saveColony(next));
       setMessage(
         current.tool === "room"
           ? "Новая комната готова. Здесь будет уютно!"
@@ -65,7 +63,6 @@ export function App() {
     const next = { ...colony };
     delete next[last];
     setColony(next);
-    setSaved(saveColony(next));
     setMessage("Последняя постройка отменена");
   }
   return (
@@ -158,10 +155,6 @@ export function App() {
           >
             ↶ Отменить последнюю постройку
           </button>
-          <div className="sidebar-bottom">
-            <span className="save-dot" />
-            {saved ? "Планировка сохраняется на этом устройстве" : "Сохранение недоступно — не закрывай страницу"}
-          </div>
         </aside>
         <div className="scene-panel">
           <div className="scene-heading">

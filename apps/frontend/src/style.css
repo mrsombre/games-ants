@@ -239,23 +239,6 @@ h1 span {
   opacity: 0.4;
   cursor: default;
 }
-.sidebar-bottom {
-  margin-top: auto;
-  padding-top: 27px;
-  font-size: 9px;
-  line-height: 1.6;
-  color: #929883;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.save-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #8da66d;
-  flex-shrink: 0;
-}
 .scene-panel {
   overflow: hidden;
   border: 1px solid #dadbd0;
@@ -449,10 +432,6 @@ h1 span {
   .undo {
     margin: 0;
     font-size: 9px;
-  }
-  .sidebar-bottom {
-    padding: 0;
-    font-size: 8px;
   }
   .page-footer > span:nth-child(2) {
     display: none;
