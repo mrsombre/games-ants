@@ -91,7 +91,12 @@ a:focus-visible {
   height: 34px;
   flex-shrink: 0;
 }
-.mode {
+.latest-event {
+  min-width: 0;
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 11px;
   color: #788164;
   background: #e8ebdc;
@@ -99,7 +104,7 @@ a:focus-visible {
   border-radius: 20px;
   padding: 7px 11px;
 }
-.mode i,
+.latest-event i,
 .scene-heading i {
   display: inline-block;
   width: 6px;
@@ -156,16 +161,16 @@ a:focus-visible {
 }
 .scene-footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   gap: 12px;
   padding: 13px 18px;
   background: #ebece2;
   font-size: 11px;
   color: #687254;
 }
-.mouse-hint {
-  color: #969c88;
-  white-space: nowrap;
+.gameplay-tip {
+  width: 100%;
+  text-align: center;
 }
 .command-panel {
   position: fixed;
@@ -288,7 +293,7 @@ a:focus-visible {
     width: 28px;
     height: 28px;
   }
-  .mode {
+  .latest-event {
     display: none;
   }
   .stats {
@@ -333,9 +338,6 @@ a:focus-visible {
   .command-description p {
     font-size: 10px;
     margin: 0;
-  }
-  .mouse-hint {
-    display: none;
   }
 }
 

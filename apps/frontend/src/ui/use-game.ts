@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import type { Tool } from "../game/colony";
 import { planBuild } from "../game/construction";
 import { demolish } from "../game/demolition";
-import { type Role, roles, SIMULATION_STEP } from "../game/model";
+import { type Role, roles, type ScoutCargo, SIMULATION_STEP, scoutCargoFood } from "../game/model";
 import { createScene } from "../game/scene";
 import { createGame, stepGame } from "../game/simulation";
 import { startSpawn } from "../game/spawning";
+import { GAMEPLAY_TIP_INTERVAL, gameplayTips } from "./gameplay-tips";
 
 export function useGame() {
   const host = useRef<HTMLDivElement>(null);
@@ -15,6 +16,7 @@ export function useGame() {
   const currentTool = useRef(tool);
   currentTool.current = tool;
   const [message, setMessage] = useState("Поставь чертёж — рабочие сами начнут строить!");
+  const [tipIndex, setTipIndex] = useState(0);
   const [error, setError] = useState(false);
   const [ready, setReady] = useState(false);
   useEffect(() => {
@@ -46,7 +48,9 @@ export function useGame() {
           accumulator += Math.min((now - last) / 1000, 0.1);
           last = now;
           while (accumulator >= SIMULATION_STEP) {
-            stepGame(game, SIMULATION_STEP);
+            for (const event of stepGame(game, SIMULATION_STEP)) {
+              if (event.kind === "scout-delivered") setMessage(scoutDeliveryMessage(event.cargo));
+            }
             accumulator -= SIMULATION_STEP;
             uiTime += SIMULATION_STEP;
           }
@@ -68,6 +72,13 @@ export function useGame() {
       instance?.destroy();
     };
   }, [game]);
+  useEffect(() => {
+    const interval = window.setInterval(
+      () => setTipIndex((index) => (index + 1) % gameplayTips.length),
+      GAMEPLAY_TIP_INTERVAL,
+    );
+    return () => window.clearInterval(interval);
+  }, []);
   function spawnAnt(role: Role) {
     const started = startSpawn(game, role);
     setMessage(
@@ -79,5 +90,15 @@ export function useGame() {
     );
     refresh((n) => n + 1);
   }
-  return { host, game, tool, setTool, message, error, ready, spawnAnt };
+  return { host, game, tool, setTool, message, tip: gameplayTips[tipIndex], error, ready, spawnAnt };
+}
+
+function scoutDeliveryMessage(cargo: ScoutCargo) {
+  const labels: Record<ScoutCargo, string> = {
+    apple: "зелёное яблоко",
+    mushroom: "грибочек",
+    caterpillar: "гусеницу",
+  };
+  const food = scoutCargoFood[cargo];
+  return `Разведчик принёс ${labels[cargo]} · +${food} ${food === 1 ? "еда" : "еды"}`;
 }

@@ -5,6 +5,7 @@ import {
   type Ant,
   ENTRANCE,
   type Game,
+  type GameEvent,
   HOME,
   type Role,
   type Scout,
@@ -55,7 +56,7 @@ export function createGame(random: () => number = Math.random): Game {
     deliveries: 0,
   };
 }
-function updateScout(game: Game, ant: Scout, seconds: number, random: () => number) {
+function updateScout(game: Game, ant: Scout, seconds: number, random: () => number): GameEvent | undefined {
   if (ant.route.length) {
     move(ant, seconds);
     return;
@@ -81,11 +82,16 @@ function updateScout(game: Game, ant: Scout, seconds: number, random: () => numb
         ant.route = [SURFACE_EXIT, ENTRANCE, ...route];
       }
       return;
-    case "returning":
-      if (ant.cargo) game.food += scoutCargoFood[ant.cargo];
+    case "returning": {
+      if (!ant.cargo) return;
+      const cargo = ant.cargo;
+      const food = scoutCargoFood[cargo];
+      game.food += food;
       game.deliveries++;
       ant.cargo = null;
       ant.phase = "home";
+      return { kind: "scout-delivered", scoutId: ant.id, cargo, food };
+    }
   }
 }
 
@@ -96,6 +102,7 @@ function scoutCargo(roll: number): ScoutCargo {
 }
 // Call with fixed short steps. Travel time never contributes to construction.
 export function stepGame(game: Game, seconds: number, random: () => number = Math.random) {
+  const events: GameEvent[] = [];
   advanceEggs(game, seconds);
   for (const ant of game.ants) {
     if (!ant.wandering && !ant.route.length && ant.wanderWait > 0) {
@@ -109,7 +116,10 @@ export function stepGame(game: Game, seconds: number, random: () => number = Mat
     const wasWandering = ant.wandering;
     switch (ant.role) {
       case "scout":
-        updateScout(game, ant, seconds, random);
+        {
+          const event = updateScout(game, ant, seconds, random);
+          if (event) events.push(event);
+        }
         break;
       case "worker":
         updateWorker(game, ant, seconds);
@@ -125,4 +135,5 @@ export function stepGame(game: Game, seconds: number, random: () => number = Mat
   }
   advanceConstruction(game, seconds);
   advanceSpawns(game, seconds, createAnt);
+  return events;
 }

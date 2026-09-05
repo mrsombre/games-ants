@@ -4,7 +4,7 @@ import { CommandPanel } from "./ui/command-panel";
 import { useGame } from "./ui/use-game";
 
 export function App() {
-  const { host, game, tool, setTool, message, error, ready, spawnAnt } = useGame();
+  const { host, game, tool, setTool, message, tip, error, ready, spawnAnt } = useGame();
   const { ants, food } = game;
   const scoutsAway = ants.filter((ant) => ant.role === "scout" && ant.phase === "away");
   return (
@@ -38,8 +38,8 @@ export function App() {
             <strong data-testid="food">{food}</strong>
           </div>
         </section>
-        <span className="mode">
-          <i /> Колония живёт
+        <span className="latest-event" role="status" title={message}>
+          <i /> {message}
         </span>
       </header>
       <section className="workspace">
@@ -63,10 +63,7 @@ export function App() {
             )}
           </div>
           <div className="scene-footer">
-            <span className="status" role="status">
-              {message}
-            </span>
-            <span className="mouse-hint">ЛКМ · {tool === "demolish" ? "сломать" : "чертёж"}</span>
+            <span className="gameplay-tip">{tip}</span>
           </div>
         </div>
       </section>

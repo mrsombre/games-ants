@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cancelLastBlueprint, planBuild } from "./construction";
-import type { Game } from "./model";
+import type { Game, GameEvent } from "./model";
 import { routeTo } from "./navigation";
 import { createGame, stepGame } from "./simulation";
 import { startSpawn } from "./spawning";
@@ -125,8 +125,10 @@ describe("living colony", () => {
     expect(ant.phase).toBe("away");
     for (let i = 0; i < 1200 && ant.phase !== "returning"; i++) stepGame(game, 0.05, () => rng);
     expect(ant.cargo).toBe(cargo);
-    for (let i = 0; i < 400 && game.deliveries === 0; i++) stepGame(game, 0.05, () => rng);
+    const events: GameEvent[] = [];
+    for (let i = 0; i < 400 && game.deliveries === 0; i++) events.push(...stepGame(game, 0.05, () => rng));
     expect(game.deliveries).toBe(1);
+    expect(events).toEqual([{ kind: "scout-delivered", scoutId: ant.id, cargo, food }]);
     expect(game.food).toBe(2 + food);
     expect([ant.x, ant.y]).toEqual([10, 2]);
     expect(ant.cargo).toBeNull();

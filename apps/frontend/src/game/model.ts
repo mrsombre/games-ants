@@ -13,6 +13,7 @@ export type WorkerTask =
 export type Worker = MovingAnt & { role: "worker"; task: WorkerTask | null; working: boolean };
 export type Egg = { id: number; location: { cell: string } | { carrier: number } };
 export type ScoutCargo = "apple" | "mushroom" | "caterpillar";
+export type GameEvent = { kind: "scout-delivered"; scoutId: number; cargo: ScoutCargo; food: number };
 export type Scout = MovingAnt & {
   role: "scout";
   phase: "home" | "outbound" | "away" | "returning";
