@@ -1,4 +1,4 @@
-import { Container, Graphics, Text } from "pixi.js";
+import { Container, Graphics } from "pixi.js";
 import { CELL, HEIGHT, SURFACE, WIDTH } from "./layout";
 
 const random = (n: number) => {
@@ -12,18 +12,7 @@ export function createLandscape() {
   drawForest(landscape);
   drawGround(landscape);
   drawEntrance(landscape);
-  const label = new Text({
-    text: "ВХОД В МУРАВЕЙНИК",
-    style: {
-      fontFamily: "sans-serif",
-      fontSize: 10,
-      letterSpacing: 2,
-      fill: 0xece8cc,
-    },
-  });
-  label.anchor.set(0.5);
-  label.position.set(8.5 * CELL, 183);
-  layer.addChild(landscape, label);
+  layer.addChild(landscape);
   return layer;
 }
 function drawForest(landscape: Graphics) {

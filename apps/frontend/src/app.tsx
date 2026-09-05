@@ -5,7 +5,8 @@ import { useGame } from "./ui/use-game";
 
 export function App() {
   const { host, game, tool, setTool, message, error, ready, spawnAnt } = useGame();
-  const { ants, food, blueprints } = game;
+  const { ants, food } = game;
+  const scoutsAway = ants.filter((ant) => ant.role === "scout" && ant.phase === "away");
   return (
     <main className="game">
       <header className="topbar">
@@ -20,18 +21,7 @@ export function App() {
                 title={roles[role].label}
                 aria-label={`${roles[role].label}: ${count}`}
               >
-                <svg viewBox="0 0 40 40" aria-hidden="true" style={{ color: `#${roles[role].color.toString(16)}` }}>
-                  <path
-                    d="M14 17 10 9 5 6M26 17l4-8 5-3"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                  />
-                  <path d="M20 13c-8 0-12 5-12 11 0 8 7 13 12 13s12-5 12-13c0-6-4-11-12-11Z" fill="currentColor" />
-                  <ellipse cx="13" cy="24" rx="2" ry="3" fill="#30392c" />
-                  <ellipse cx="27" cy="24" rx="2" ry="3" fill="#30392c" />
-                </svg>
+                <AntHead antRole={role} />
                 <strong>{count}</strong>
               </div>
             );
@@ -58,9 +48,10 @@ export function App() {
             <span>
               <i /> Лесная поляна
             </span>
-            <span>
-              Чертежи: {Object.keys(blueprints).length} · В разведке:{" "}
-              {ants.filter((ant) => ant.role === "scout" && ant.phase === "away").length}
+            <span className="scouts-away" role="img" aria-label={`В разведке: ${scoutsAway.length}`}>
+              {scoutsAway.map((scout) => (
+                <AntHead antRole="scout" key={scout.id} />
+              ))}
             </span>
           </div>
           <div className="canvas-wrap">
@@ -87,5 +78,16 @@ export function App() {
         spawnAnt={spawnAnt}
       />
     </main>
+  );
+}
+
+function AntHead({ antRole }: { antRole: Role }) {
+  return (
+    <svg viewBox="0 0 40 40" aria-hidden="true" style={{ color: `#${roles[antRole].color.toString(16)}` }}>
+      <path d="M14 17 10 9 5 6M26 17l4-8 5-3" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      <path d="M20 13c-8 0-12 5-12 11 0 8 7 13 12 13s12-5 12-13c0-6-4-11-12-11Z" fill="currentColor" />
+      <ellipse cx="13" cy="24" rx="2" ry="3" fill="#30392c" />
+      <ellipse cx="27" cy="24" rx="2" ry="3" fill="#30392c" />
+    </svg>
   );
 }
