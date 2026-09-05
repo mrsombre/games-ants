@@ -3,7 +3,7 @@ import { CommandPanel } from "./ui/command-panel";
 import { useGame } from "./ui/use-game";
 
 export function App() {
-  const { host, game, tool, setTool, message, error, ready, undo, hire } = useGame();
+  const { host, game, tool, setTool, message, error, ready, hire } = useGame();
   const { ants, food, blueprints } = game;
   return (
     <main className="game">
@@ -74,18 +74,11 @@ export function App() {
             <span className="status" role="status">
               {message}
             </span>
-            <span className="mouse-hint">ЛКМ · чертёж</span>
+            <span className="mouse-hint">ЛКМ · {tool === "demolish" ? "сломать" : "чертёж"}</span>
           </div>
         </div>
       </section>
-      <CommandPanel
-        tool={tool}
-        setTool={setTool}
-        food={food}
-        canUndo={Object.keys(blueprints).length > 0}
-        undo={undo}
-        hire={hire}
-      />
+      <CommandPanel tool={tool} setTool={setTool} food={food} hire={hire} />
     </main>
   );
 }

@@ -1,6 +1,7 @@
 import { Application, Graphics } from "pixi.js";
 import { type Colony, isCell, type Point, placementError, type Tool } from "./colony";
 import { plannedColony } from "./construction";
+import { demolitionError } from "./demolition";
 import type { Game } from "./model";
 import { drawColony } from "./rendering/colony";
 import { createCreatures } from "./rendering/creatures";
@@ -26,12 +27,14 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
     tool: Tool = "corridor",
     revision = -1;
   let active: Point | null = null;
+  let currentGame: Game | undefined;
   function updateHover() {
     hover.clear();
     if (!active) return;
     const { x, y } = active;
     if (!isCell(x, y)) return;
-    const valid = !placementError(planned, x, y, tool);
+    const valid =
+      tool === "demolish" ? !!currentGame && !demolitionError(currentGame, x, y) : !placementError(planned, x, y, tool);
     hover
       .roundRect(x * CELL + 3, SURFACE + y * CELL + 3, CELL - 6, CELL - 6, 7)
       .fill({ color: valid ? 0xd8dd8d : 0xd98470, alpha: 0.28 })
@@ -60,13 +63,11 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
   app.canvas.addEventListener("pointermove", move);
   app.canvas.addEventListener("pointerdown", down);
   app.canvas.addEventListener("pointerleave", leave);
-  app.canvas.setAttribute(
-    "aria-label",
-    "Лес и подземная сетка муравейника. Выбери инструмент и нажми на соседнюю пустую клетку.",
-  );
+  app.canvas.setAttribute("aria-label", "Лес и подземная сетка муравейника. Выбери инструмент и нажми на клетку.");
   Object.assign(app.canvas.style, { width: "100%", height: "auto", display: "block" });
   return {
     update(game: Game, nextTool: Tool, time: number) {
+      currentGame = game;
       if (revision !== game.revision || tool !== nextTool) {
         revision = game.revision;
         tool = nextTool;

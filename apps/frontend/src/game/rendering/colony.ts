@@ -32,7 +32,7 @@ function drawVacantCell(g: Graphics, planned: Colony, tool: Tool, x: number, y: 
   const px = x * CELL,
     py = SURFACE + y * CELL;
   g.rect(px + 1, py + 1, CELL - 2, CELL - 2).stroke({ color: 0xa09170, alpha: 0.1, width: 1 });
-  if (placementError(planned, x, y, tool)) return;
+  if (tool === "demolish" || placementError(planned, x, y, tool)) return;
   g.roundRect(px + 5, py + 5, CELL - 10, CELL - 10, 7).fill({ color: 0xcac08e, alpha: 0.045 });
   g.moveTo(px + 23, py + 26)
     .lineTo(px + 29, py + 26)

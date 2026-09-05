@@ -4,7 +4,8 @@ export const COLS = 18;
 export const ROWS = 10;
 export const MAX_ROOM_WIDTH = 4;
 export type Tile = "corridor" | "room" | "queen";
-export type Tool = "corridor" | "room";
+export type BuildTool = "corridor" | "room";
+export type Tool = BuildTool | "demolish";
 export type Colony = Record<string, Tile>;
 export const key = (x: number, y: number) => `${x},${y}`;
 export const isRoom = (tile: Tile | undefined) => tile === "room" || tile === "queen";
@@ -50,7 +51,7 @@ export function roomCount(colony: Colony) {
 export function isCell(x: number, y: number) {
   return Number.isInteger(x) && Number.isInteger(y) && x >= 0 && x < COLS && y >= 0 && y < ROWS;
 }
-export function placementError(colony: Colony, x: number, y: number, tool: Tool): string | null {
+export function placementError(colony: Colony, x: number, y: number, tool: BuildTool): string | null {
   if (!isCell(x, y)) return "Строй внутри подземной сетки";
   if (y === 0) return "Верхний слой закрыт для строительства — вход уже готов";
   if (colony[key(x, y)]) return "Здесь уже построено";

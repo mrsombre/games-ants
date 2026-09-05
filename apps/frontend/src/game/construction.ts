@@ -1,11 +1,11 @@
-import { type Colony, connected, key, neighbors, type Point, placementError, point, type Tool } from "./colony";
+import { type BuildTool, type Colony, connected, key, neighbors, type Point, placementError, point } from "./colony";
 import { buildSeconds, type Game, type Worker } from "./model";
 import { routeTo } from "./navigation";
 
 export function plannedColony(game: Game): Colony {
   return { ...game.colony, ...Object.fromEntries(Object.entries(game.blueprints).map(([id, b]) => [id, b.tile])) };
 }
-export function planBuild(game: Game, x: number, y: number, tile: Tool) {
+export function planBuild(game: Game, x: number, y: number, tile: BuildTool) {
   const error = placementError(plannedColony(game), x, y, tile);
   if (error) return error;
   game.blueprints[key(x, y)] = { tile, progress: 0, workers: 0 };

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Tool } from "../game/colony";
-import { cancelLastBlueprint, planBuild } from "../game/construction";
+import { planBuild } from "../game/construction";
+import { demolish } from "../game/demolition";
 import { type Role, roles, SIMULATION_STEP } from "../game/model";
 import { createScene } from "../game/scene";
 import { createGame, recruit, stepGame } from "../game/simulation";
@@ -21,8 +22,12 @@ export function useGame() {
     let instance: Awaited<ReturnType<typeof createScene>> | undefined;
     let frame = 0;
     void createScene(host.current, (x, y) => {
-      const reason = planBuild(game, x, y, currentTool.current);
-      setMessage(reason ?? "Чертёж поставлен. Рабочие строят, когда к нему готов проход.");
+      const selected = currentTool.current;
+      const reason = selected === "demolish" ? demolish(game, x, y) : planBuild(game, x, y, selected);
+      setMessage(
+        reason ??
+          (selected === "demolish" ? "Элемент сломан" : "Чертёж поставлен. Рабочие строят, когда к нему готов проход."),
+      );
       refresh((n) => n + 1);
     })
       .then((result) => {
@@ -62,14 +67,9 @@ export function useGame() {
       instance?.destroy();
     };
   }, [game]);
-  function undo() {
-    cancelLastBlueprint(game);
-    refresh((n) => n + 1);
-    setMessage("Последний чертёж отменён");
-  }
   function hire(role: Role) {
     setMessage(recruit(game, role) ? `${roles[role].label} появился у матки!` : "Не хватает еды — дождись разведчика");
     refresh((n) => n + 1);
   }
-  return { host, game, tool, setTool, message, error, ready, undo, hire };
+  return { host, game, tool, setTool, message, error, ready, hire };
 }

@@ -1,4 +1,4 @@
-import type { Colony, Point, Tool } from "./colony";
+import type { BuildTool, Colony, Point } from "./colony";
 
 type MovingAnt = Point & { id: number; route: Point[]; heading: number };
 export type Worker = MovingAnt & { role: "worker"; target: string | null; working: boolean };
@@ -11,7 +11,7 @@ export type Scout = MovingAnt & {
 export type Warrior = MovingAnt & { role: "warrior"; phase: "home" | "patrol" };
 export type Ant = Worker | Scout | Warrior;
 export type Role = Ant["role"];
-export type Blueprint = { tile: Tool; progress: number; workers: number };
+export type Blueprint = { tile: BuildTool; progress: number; workers: number };
 export type Game = {
   colony: Colony;
   blueprints: Record<string, Blueprint>;

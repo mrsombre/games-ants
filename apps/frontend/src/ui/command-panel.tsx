@@ -5,11 +5,9 @@ type Props = {
   tool: Tool;
   setTool: (tool: Tool) => void;
   food: number;
-  canUndo: boolean;
-  undo: () => void;
   hire: (role: Role) => void;
 };
-export function CommandPanel({ tool, setTool, food, canUndo, undo, hire }: Props) {
+export function CommandPanel({ tool, setTool, food, hire }: Props) {
   return (
     <section className="command-panel" aria-label="Строительство">
       <div className="command-inner">
@@ -49,16 +47,27 @@ export function CommandPanel({ tool, setTool, food, canUndo, undo, hire }: Props
           </button>
         </fieldset>
         <div className="command-description">
-          <strong>{tool === "corridor" ? "Коридор" : "Комната"}</strong>
+          <strong>{tool === "demolish" ? "Сломать" : tool === "corridor" ? "Коридор" : "Комната"}</strong>
           <p>
-            {tool === "corridor"
-              ? "Продолжай проход от другого коридора."
-              : "Строй у коридора. Расширяй влево и вправо до ×4."}
+            {tool === "demolish"
+              ? "Убирай крайние клетки, сохраняя комнаты и проходы."
+              : tool === "corridor"
+                ? "Продолжай проход от другого коридора."
+                : "Строй у коридора. Расширяй влево и вправо до ×4."}
           </p>
-          <small>{buildSeconds[tool]} с / рабочий · Вместе быстрее</small>
+          {tool !== "demolish" && <small>{buildSeconds[tool]} с / рабочий · Вместе быстрее</small>}
         </div>
-        <button type="button" className="undo" onClick={undo} disabled={!canUndo} title="Отменить последний чертёж">
-          ↶ <span>Отменить</span>
+        <button
+          type="button"
+          className={`command-button demolition ${tool === "demolish" ? "selected" : ""}`}
+          onClick={() => setTool("demolish")}
+          aria-pressed={tool === "demolish"}
+          title="Сломать край комнаты, коридора или чертежа"
+        >
+          <svg viewBox="0 0 48 48" aria-hidden="true">
+            <path d="m12 12 24 24m0-24L12 36" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
+          </svg>
+          <span>Сломать</span>
         </button>
         <Recruitment food={food} hire={hire} />
       </div>
