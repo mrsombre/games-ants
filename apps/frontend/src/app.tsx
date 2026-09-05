@@ -98,66 +98,6 @@ export function App() {
         </span>
       </header>
       <section className="workspace">
-        <aside className="sidebar">
-          <div>
-            <p className="eyebrow">ТВОЯ ПЕРВАЯ КОЛОНИЯ</p>
-            <h1>
-              Дом под
-              <br />
-              лесом<span>.</span>
-            </h1>
-            <p className="intro">
-              Большое приключение
-              <br />
-              начинается с маленькой норки.
-            </p>
-          </div>
-          <div className="build-panel">
-            <p className="section-label">ЧТО ПОСТРОИМ?</p>
-            <button
-              type="button"
-              className={`build-card ${tool === "corridor" ? "selected" : ""}`}
-              aria-pressed={tool === "corridor"}
-              onClick={() => setTool("corridor")}
-            >
-              <span className="tile-icon corridor-icon">┼</span>
-              <span>
-                <strong>Коридор</strong>
-                <small>Путь к новым комнатам</small>
-              </span>
-              <span className="selection-dot" />
-            </button>
-            <button
-              type="button"
-              className={`build-card ${tool === "room" ? "selected" : ""}`}
-              aria-pressed={tool === "room"}
-              onClick={() => setTool("room")}
-            >
-              <span className="tile-icon">▤</span>
-              <span>
-                <strong>Комната</strong>
-                <small>Расширяется вбок до ×4</small>
-              </span>
-              <span className="selection-dot" />
-            </button>
-            <p className="free-note">Без стоимости · Можно экспериментировать</p>
-          </div>
-          <div className="hint">
-            <span>✦</span>
-            <p>
-              <strong>Расти вглубь</strong>Продолжай шахту от коридора. Комнаты расширяй влево или вправо — до четырёх
-              клеток.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="undo"
-            onClick={undo}
-            disabled={Object.keys(colony).length === Object.keys(initialColony).length}
-          >
-            ↶ Отменить последнюю постройку
-          </button>
-        </aside>
         <div className="scene-panel">
           <div className="scene-heading">
             <span>
@@ -181,13 +121,63 @@ export function App() {
           </div>
         </div>
       </section>
-      <footer className="page-footer">
-        <span>
-          GAMES—ANTS <span> / </span> 01
-        </span>
-        <span>У каждого большого мира есть маленькое начало.</span>
-        <span>ПРОТОТИП</span>
-      </footer>
+      <section className="command-panel" aria-label="Строительство">
+        <div className="command-inner">
+          <div className="command-title">
+            <span>КОЛОНИЯ</span>
+            <strong>Строительство</strong>
+          </div>
+          <fieldset className="command-buttons" aria-label="Выбор постройки">
+            <button
+              type="button"
+              className={`command-button ${tool === "corridor" ? "selected" : ""}`}
+              aria-pressed={tool === "corridor"}
+              title="Коридор — продолжить проход"
+              onClick={() => setTool("corridor")}
+            >
+              <svg viewBox="0 0 48 48" aria-hidden="true">
+                <rect x="3" y="3" width="42" height="42" rx="4" fill="#4a3c2e" />
+                <path d="M19 4h10v15h15v10H29v15H19V29H4V19h15Z" fill="currentColor" />
+                <path d="M22 5v17H5m38 4H26v17" fill="none" stroke="#fff3bd" strokeOpacity=".3" strokeWidth="2" />
+              </svg>
+              <span>Коридор</span>
+            </button>
+            <button
+              type="button"
+              className={`command-button ${tool === "room" ? "selected" : ""}`}
+              aria-pressed={tool === "room"}
+              title="Комната — расширение по горизонтали до ×4"
+              onClick={() => setTool("room")}
+            >
+              <svg viewBox="0 0 48 48" aria-hidden="true">
+                <rect x="3" y="3" width="42" height="42" rx="4" fill="#4a3c2e" />
+                <rect x="7" y="12" width="34" height="25" rx="4" fill="currentColor" />
+                <path d="M11 33h26M12 17h24" stroke="#fff3bd" strokeOpacity=".5" strokeWidth="2" />
+                <path d="M3 22h5v8H3" fill="currentColor" />
+              </svg>
+              <span>Комната</span>
+            </button>
+          </fieldset>
+          <div className="command-description">
+            <strong>{tool === "corridor" ? "Коридор" : "Комната"}</strong>
+            <p>
+              {tool === "corridor"
+                ? "Продолжай проход от другого коридора."
+                : "Строй у коридора. Расширяй влево и вправо до ×4."}
+            </p>
+            <small>ЛКМ по клетке · Бесплатно</small>
+          </div>
+          <button
+            type="button"
+            className="undo"
+            onClick={undo}
+            disabled={Object.keys(colony).length === Object.keys(initialColony).length}
+            title="Отменить последнюю постройку"
+          >
+            ↶ <span>Отменить</span>
+          </button>
+        </div>
+      </section>
     </main>
   );
 }
