@@ -1,5 +1,5 @@
 import { Application, Container, Graphics, Text } from "pixi.js";
-import { COLS, type Colony, key, placementError, ROWS } from "./colony";
+import { COLS, type Colony, key, placementError, ROWS, roomSpan, type Tool } from "./colony";
 
 const CELL = 52;
 const WIDTH = COLS * CELL;
@@ -105,19 +105,21 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
   const hover = new Graphics();
   world.addChild(hover);
   let colony: Colony = {};
+  let tool: Tool = "corridor";
   let active: { x: number; y: number } | null = null;
   function updateHover() {
     hover.clear();
     if (!active) return;
     const { x, y } = active;
     if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return;
-    const valid = !placementError(colony, x, y);
+    const valid = !placementError(colony, x, y, tool);
     hover
       .roundRect(x * CELL + 3, SURFACE + y * CELL + 3, CELL - 6, CELL - 6, 7)
       .fill({ color: valid ? 0xd8dd8d : 0xd98470, alpha: 0.28 })
       .stroke({ color: valid ? 0xe8ecac : 0xdf9a86, width: 2 });
   }
-  function render(next: Colony) {
+  function render(next: Colony, nextTool: Tool) {
+    tool = nextTool;
     colony = next;
     for (const child of tiles.removeChildren()) child.destroy();
     const g = new Graphics();
@@ -128,8 +130,9 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
           px = x * CELL,
           py = SURFACE + y * CELL;
         if (!tile) {
+          if (y === 0) continue;
           g.rect(px + 1, py + 1, CELL - 2, CELL - 2).stroke({ color: 0xa09170, alpha: 0.1, width: 1 });
-          if (!placementError(colony, x, y)) {
+          if (!placementError(colony, x, y, tool)) {
             g.roundRect(px + 5, py + 5, CELL - 10, CELL - 10, 7).fill({ color: 0xcac08e, alpha: 0.045 });
             g.moveTo(px + 23, py + 26)
               .lineTo(px + 29, py + 26)
@@ -141,14 +144,27 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
         }
         const room = tile !== "corridor";
         const color = room ? 0x987546 : 0x796246;
-        g.roundRect(px + 4, py + 4, CELL - 8, CELL - 8, room ? 9 : 15).fill(color);
+        if (room) {
+          const span = roomSpan(colony, x, y);
+          if (x === span.left) {
+            const width = span.width * CELL;
+            g.roundRect(px + 4, py + 4, width - 8, CELL - 8, 9).fill(color);
+            g.roundRect(px + 8, py + 8, width - 16, 33, 6).fill(0xac8c57);
+            g.moveTo(px + 10, py + 43)
+              .lineTo(px + width - 10, py + 43)
+              .stroke({ color: 0xc2a36d, width: 2 });
+          }
+        } else g.roundRect(px + 4, py + 4, CELL - 8, CELL - 8, 15).fill(color);
         for (const [dx = 0, dy = 0] of [
           [1, 0],
           [-1, 0],
           [0, 1],
           [0, -1],
         ])
-          if (colony[key(x + dx, y + dy)] || (x === 8 && y === 0 && dy === -1)) {
+          if (
+            (colony[key(x + dx, y + dy)] && (tile === "corridor" || colony[key(x + dx, y + dy)] === "corridor")) ||
+            (x === 8 && y === 0 && dy === -1)
+          ) {
             g.rect(
               px + 18 + (dx < 0 ? -18 : 0),
               py + 18 + (dy < 0 ? -18 : 0),
@@ -157,7 +173,6 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
             ).fill(color);
           }
         if (room) {
-          g.roundRect(px + 8, py + 8, 36, 33, 6).fill(tile === "queen" ? 0xb29359 : 0xac8c57);
           g.moveTo(px + 10, py + 43)
             .lineTo(px + 42, py + 43)
             .stroke({ color: 0xc2a36d, width: 2 });

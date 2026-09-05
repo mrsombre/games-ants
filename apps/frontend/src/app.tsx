@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { type Colony, initialColony, key, placementError, type Tool } from "./game/colony";
+import { type Colony, initialColony, isRoom, key, placementError, roomCount, type Tool } from "./game/colony";
 import { createScene } from "./game/scene";
 
 export function App() {
@@ -18,7 +18,7 @@ export function App() {
     let instance: Awaited<ReturnType<typeof createScene>> | undefined;
     void createScene(host.current, (x, y) => {
       const current = state.current;
-      const reason = placementError(current.colony, x, y);
+      const reason = placementError(current.colony, x, y, current.tool);
       if (reason) {
         setMessage(reason);
         return;
@@ -28,7 +28,9 @@ export function App() {
       setColony(next);
       setMessage(
         current.tool === "room"
-          ? "Новая комната готова. Здесь будет уютно!"
+          ? isRoom(current.colony[key(x - 1, y)]) || isRoom(current.colony[key(x + 1, y)])
+            ? "Комната стала просторнее!"
+            : "Новая комната готова. Здесь будет уютно!"
           : "Коридор готов. Теперь можно копать дальше!",
       );
     })
@@ -39,7 +41,7 @@ export function App() {
           return;
         }
         scene.current = result;
-        result.render(state.current.colony);
+        result.render(state.current.colony, state.current.tool);
         setReady(true);
       })
       .catch(() => {
@@ -52,9 +54,9 @@ export function App() {
     };
   }, []);
   useEffect(() => {
-    scene.current?.render(colony);
-  }, [colony]);
-  const rooms = Object.values(colony).filter((tile) => tile !== "corridor").length;
+    scene.current?.render(colony, tool);
+  }, [colony, tool]);
+  const rooms = roomCount(colony);
   const corridors = Object.values(colony).filter((tile) => tile === "corridor").length;
   function undo() {
     const positions = Object.keys(colony).filter((position) => !initialColony[position]);
@@ -134,7 +136,7 @@ export function App() {
               <span className="tile-icon">▤</span>
               <span>
                 <strong>Комната</strong>
-                <small>Место для жизни и запасов</small>
+                <small>Расширяется вбок до ×4</small>
               </span>
               <span className="selection-dot" />
             </button>
@@ -143,8 +145,8 @@ export function App() {
           <div className="hint">
             <span>✦</span>
             <p>
-              <strong>Расти вглубь</strong>Нажми на пустую клетку рядом с муравейником. Комнаты соединяются
-              автоматически.
+              <strong>Расти вглубь</strong>Продолжай шахту от коридора. Комнаты расширяй влево или вправо — до четырёх
+              клеток.
             </p>
           </div>
           <button
