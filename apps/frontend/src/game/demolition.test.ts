@@ -7,6 +7,7 @@ import { createGame, stepGame } from "./simulation";
 describe("demolition", () => {
   it("removes room edges and corridor ends", () => {
     const game = createGame();
+    game.eggs = [];
     for (const [x, y] of [
       [6, 1],
       [7, 1],

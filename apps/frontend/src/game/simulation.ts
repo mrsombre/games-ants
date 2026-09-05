@@ -1,4 +1,4 @@
-import { COLS, initialColony } from "./colony";
+import { COLS, initialColony, key, type Point, point } from "./colony";
 import { advanceConstruction } from "./construction";
 import { advanceEggs } from "./eggs";
 import {
@@ -16,8 +16,8 @@ import { move, routeTo } from "./navigation";
 import { advanceSpawns } from "./spawning";
 import { assignTasks, updateWorker } from "./tasks";
 
-function createAnt(id: number, role: Role): Ant {
-  const body = { ...HOME, id, route: [], heading: 0, wandering: false, wanderWait: 0 };
+function createAnt(id: number, role: Role, position: Point = HOME): Ant {
+  const body = { ...position, id, route: [], heading: 0, wandering: false, wanderWait: 0 };
   switch (role) {
     case "worker":
       return { ...body, role, task: null, working: false };
@@ -27,17 +27,27 @@ function createAnt(id: number, role: Role): Ant {
       return { ...body, role, phase: "home" };
   }
 }
-export function createGame(): Game {
+export function createGame(random: () => number = Math.random): Game {
   const initialRoles: Role[] = ["worker", "worker", "worker", "scout", "warrior"];
+  const startingCells = Object.entries(initialColony)
+    .filter(([, tile]) => tile !== "queen")
+    .map(([cell]) => point(cell));
+  const ants = initialRoles.map((role, i) => {
+    const cellIndex = Math.min(startingCells.length - 1, Math.floor(random() * startingCells.length));
+    const [position] = startingCells.splice(cellIndex, 1);
+    if (!position) throw new Error("not enough starting cells for ants");
+    return createAnt(i + 1, role, position);
+  });
+  const eggCell = key(random() < 0.5 ? HOME.x - 1 : HOME.x + 1, HOME.y);
   return {
     colony: { ...initialColony },
     blueprints: {},
-    ants: initialRoles.map((role, i) => createAnt(i + 1, role)),
-    eggs: [],
+    ants,
+    eggs: [{ id: 1, location: { cell: eggCell } }],
     eggTimer: 0,
-    nextEggId: 1,
+    nextEggId: 2,
     spawns: [],
-    food: 5,
+    food: 2,
     nextId: initialRoles.length + 1,
     revision: 0,
     deliveries: 0,

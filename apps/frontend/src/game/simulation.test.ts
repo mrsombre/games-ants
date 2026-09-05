@@ -19,11 +19,20 @@ function builders(count: number) {
 }
 describe("living colony", () => {
   it("starts with all roles and resources", () => {
-    const game = createGame();
-    expect(game.food).toBe(5);
-    expect(game.ants.map((ant) => ant.role)).toEqual(["worker", "worker", "worker", "scout", "warrior"]);
-    expect(game.eggs).toEqual([]);
-    expect(game.spawns).toEqual([]);
+    const left = createGame(() => 0);
+    const right = createGame(() => 0.999999);
+    expect(left.food).toBe(2);
+    expect(left.ants.map((ant) => ant.role)).toEqual(["worker", "worker", "worker", "scout", "warrior"]);
+    expect(left.eggs).toEqual([{ id: 1, location: { cell: "9,2" } }]);
+    expect(right.eggs).toEqual([{ id: 1, location: { cell: "11,2" } }]);
+    expect(left.nextEggId).toBe(2);
+    expect(left.spawns).toEqual([]);
+    for (const game of [left, right]) {
+      const positions = game.ants.map((ant) => `${ant.x},${ant.y}`);
+      expect(new Set(positions).size).toBe(game.ants.length);
+      expect(positions).not.toContain("10,2");
+      expect(positions.every((position) => game.colony[position] !== undefined)).toBe(true);
+    }
   });
   it("marks blueprints, validates their topology and keeps them unwalkable", () => {
     const game = builders(1);
@@ -107,12 +116,12 @@ describe("living colony", () => {
     expect(ant.phase).toBe("away");
     expect(ant.x < 0 || ant.x > 17).toBe(true);
     expect(ant.away).toBeCloseTo(5 + rng * 55);
-    expect(game.food).toBe(5);
+    expect(game.food).toBe(2);
     advance(game, 4.9, () => rng);
     expect(ant.phase).toBe("away");
     for (let i = 0; i < 1600 && game.deliveries === 0; i++) stepGame(game, 0.05, () => rng);
     expect(game.deliveries).toBe(1);
-    expect(game.food).toBe(6 + Math.floor(rng * 3));
+    expect(game.food).toBe(3 + Math.floor(rng * 3));
     expect([ant.x, ant.y]).toEqual([10, 2]);
     expect(ant.cargo).toBe(0);
     for (let i = 0; i < 1000 && ant.phase !== "away"; i++) stepGame(game, 0.05, () => rng);

@@ -10,8 +10,9 @@ function advance(game: Game, seconds: number) {
 describe("ant spawning", () => {
   it("requires both food and an egg that is not being transported", () => {
     const game = createGame();
+    game.eggs = [];
     expect(startSpawn(game, "worker")).toBe(false);
-    expect(game.food).toBe(5);
+    expect(game.food).toBe(2);
     game.eggs = [{ id: 1, location: { carrier: 1 } }];
     expect(startSpawn(game, "worker")).toBe(false);
     game.eggs = [{ id: 1, location: { cell: "9,2" } }];
@@ -33,7 +34,7 @@ describe("ant spawning", () => {
       { id: 2, location: { cell: "7,1" } },
     ];
     expect(startSpawn(game, "scout", () => 0.999999)).toBe(true);
-    expect(game.food).toBe(3);
+    expect(game.food).toBe(0);
     expect(game.spawns).toEqual([{ eggId: 2, cell: "7,1", role: "scout", progress: 0 }]);
     expect(spawnableEggs(game).map((egg) => egg.id)).toEqual([1]);
     expect(game.ants).toEqual([]);
@@ -43,6 +44,7 @@ describe("ant spawning", () => {
     const game = createGame();
     game.ants = [];
     game.eggs = [{ id: 1, location: { cell: "6,1" } }];
+    game.food = 3;
     expect(startSpawn(game, "warrior")).toBe(true);
     advance(game, 9.95);
     expect(game.ants).toEqual([]);

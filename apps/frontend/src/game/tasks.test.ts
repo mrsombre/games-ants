@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { key } from "./colony";
 import { cancelLastBlueprint, planBuild } from "./construction";
+import type { Game, Worker } from "./model";
 import { createGame, stepGame } from "./simulation";
 import { assignTasks } from "./tasks";
 
-function workers() {
+function workers(): Omit<Game, "ants"> & { ants: Worker[] } {
   const game = createGame();
-  return { ...game, ants: game.ants.filter((ant) => ant.role === "worker") };
+  const ants = game.ants.filter((ant): ant is Worker => ant.role === "worker");
+  for (const ant of ants) {
+    ant.x = 10;
+    ant.y = 2;
+  }
+  return { ...game, ants, eggs: [] };
 }
 
 describe("colony task auction", () => {
@@ -88,6 +94,7 @@ describe("colony task auction", () => {
   });
   it("assigns foraging and patrol only to the matching roles", () => {
     const game = createGame();
+    game.eggs = [];
     assignTasks(game, () => 0);
     expect(game.ants.find((ant) => ant.role === "scout")?.phase).toBe("outbound");
     expect(game.ants.find((ant) => ant.role === "warrior")?.phase).toBe("patrol");

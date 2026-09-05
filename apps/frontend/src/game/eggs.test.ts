@@ -15,14 +15,17 @@ function workerGame() {
 }
 
 describe("egg lifecycle", () => {
-  it("starts empty and lays the first clutch after 30 seconds", () => {
-    const game = createGame();
+  it("starts with one clutch and lays another after 30 seconds", () => {
+    const game = createGame(() => 0);
     game.ants = [];
-    expect(game.eggs).toEqual([]);
-    advance(game, 29.95);
-    expect(game.eggs).toEqual([]);
-    advance(game, 0.05);
     expect(game.eggs).toEqual([{ id: 1, location: { cell: "9,2" } }]);
+    advance(game, 29.95);
+    expect(game.eggs).toHaveLength(1);
+    advance(game, 0.05);
+    expect(game.eggs).toEqual([
+      { id: 1, location: { cell: "9,2" } },
+      { id: 2, location: { cell: "11,2" } },
+    ]);
     expect(game.eggTimer).toBeCloseTo(0);
   });
   it("pauses the timer when both adjacent cells are occupied and preserves elapsed time", () => {
@@ -49,14 +52,14 @@ describe("egg lifecycle", () => {
     game.ants = [];
     delete game.colony["9,2"];
     delete game.colony["11,2"];
+    game.eggs = [];
     game.blueprints["11,2"] = { tile: "room", workers: 0, progress: 0 };
     advance(game, 60);
     expect(game.eggs).toEqual([]);
     expect(game.eggTimer).toBe(0);
   });
-  it("carries a clutch visibly before storing it in the farthest reachable room cell", () => {
+  it("carries the starting clutch visibly before storing it in the farthest reachable room cell", () => {
     const game = workerGame();
-    advance(game, 30);
     expect(game.eggs).toHaveLength(1);
     for (let i = 0; i < 200 && game.eggs[0] && "cell" in game.eggs[0].location; i++) {
       stepGame(game, 0.05, () => 0.5);
