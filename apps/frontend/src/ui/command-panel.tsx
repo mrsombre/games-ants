@@ -1,16 +1,15 @@
 import type { Tool } from "../game/colony";
-import { type Ant, buildSeconds, type Role, roles } from "../game/model";
+import { buildSeconds, type Role, roles } from "../game/model";
 
 type Props = {
   tool: Tool;
   setTool: (tool: Tool) => void;
-  ants: Ant[];
   food: number;
   canUndo: boolean;
   undo: () => void;
   hire: (role: Role) => void;
 };
-export function CommandPanel({ tool, setTool, ants, food, canUndo, undo, hire }: Props) {
+export function CommandPanel({ tool, setTool, food, canUndo, undo, hire }: Props) {
   return (
     <section className="command-panel" aria-label="Строительство">
       <div className="command-inner">
@@ -61,13 +60,13 @@ export function CommandPanel({ tool, setTool, ants, food, canUndo, undo, hire }:
         <button type="button" className="undo" onClick={undo} disabled={!canUndo} title="Отменить последний чертёж">
           ↶ <span>Отменить</span>
         </button>
-        <Recruitment ants={ants} food={food} hire={hire} />
+        <Recruitment food={food} hire={hire} />
       </div>
     </section>
   );
 }
 
-function Recruitment({ ants, food, hire }: Pick<Props, "ants" | "food" | "hire">) {
+function Recruitment({ food, hire }: Pick<Props, "food" | "hire">) {
   return (
     <fieldset className="command-buttons recruitment" aria-label="Найм муравьёв">
       {(Object.keys(roles) as Role[]).map((role) => (
@@ -78,7 +77,7 @@ function Recruitment({ ants, food, hire }: Pick<Props, "ants" | "food" | "hire">
           disabled={food < roles[role].cost}
           onClick={() => hire(role)}
           aria-label={`${roles[role].label} — ${roles[role].cost} еды`}
-          title={`${roles[role].label}: ${ants.filter((ant) => ant.role === role).length} в колонии`}
+          title={`${roles[role].label} — ${roles[role].cost} еды`}
         >
           <svg viewBox="0 0 48 36" aria-hidden="true" style={{ color: `#${roles[role].color.toString(16)}` }}>
             <g
@@ -95,9 +94,7 @@ function Recruitment({ ants, food, hire }: Pick<Props, "ants" | "food" | "hire">
             </g>
           </svg>
           <span>{roles[role].label}</span>
-          <small>
-            {roles[role].cost} еды · {ants.filter((ant) => ant.role === role).length} шт.
-          </small>
+          <small>{roles[role].cost} еды</small>
         </button>
       ))}
     </fieldset>

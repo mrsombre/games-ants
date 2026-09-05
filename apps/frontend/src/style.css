@@ -39,28 +39,25 @@ a:focus-visible {
   justify-content: space-between;
   gap: 24px;
 }
-.brand {
+.ant-counts {
   display: flex;
-  gap: 13px;
   align-items: center;
-  text-decoration: none;
-  color: inherit;
-  font-size: 29px;
-  font-weight: 750;
-  letter-spacing: -1.6px;
+  gap: 24px;
 }
-.brand img {
-  width: 43px;
-  height: 43px;
-  transform: rotate(-18deg);
+.ant-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.brand-sub {
-  display: block;
-  font-size: 8px;
-  letter-spacing: 1.65px;
+.ant-count svg {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+.ant-count strong {
+  font-size: 21px;
   font-weight: 600;
-  margin-top: 3px;
-  color: #7f8675;
+  font-variant-numeric: tabular-nums;
 }
 .stats {
   display: flex;
@@ -77,10 +74,12 @@ a:focus-visible {
   font-size: 21px;
   font-weight: 600;
   color: #38422f;
+  font-variant-numeric: tabular-nums;
 }
-.stat-icon {
-  font-size: 24px;
-  color: #89946e;
+.resource-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
 }
 .mode {
   font-size: 11px;
@@ -275,12 +274,15 @@ a:focus-visible {
   .topbar {
     height: 80px;
   }
-  .brand {
-    font-size: 24px;
+  .ant-counts {
+    gap: 12px;
   }
-  .brand img {
-    width: 32px;
-    height: 32px;
+  .ant-count {
+    gap: 4px;
+  }
+  .ant-count svg {
+    width: 30px;
+    height: 30px;
   }
   .mode {
     display: none;
@@ -288,8 +290,9 @@ a:focus-visible {
   .stats {
     gap: 14px;
   }
-  .stats > div > span:last-child {
-    display: none;
+  .resource-icon {
+    width: 30px;
+    height: 30px;
   }
   .command-title {
     display: none;
@@ -303,16 +306,19 @@ a:focus-visible {
   .command-description p {
     font-size: 11px;
   }
+}
+@media (max-width: 800px) {
   .undo span {
     display: none;
   }
 }
 @media (max-width: 480px) {
-  .brand-sub {
-    font-size: 6px;
-  }
-  .stats > .queen-stat {
-    display: none;
+  .topbar {
+    gap: 12px;
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 80px;
+    padding: 12px 0;
   }
   .command-button {
     width: 70px;
