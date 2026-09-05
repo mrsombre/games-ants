@@ -1,6 +1,5 @@
-.DS_Store
-.idea
-.vscode
+# Scratch space for temporary files
+.tmp/
 
 node_modules/
 dist/
@@ -15,5 +14,3 @@ coverage/
 
 .wrangler/
 worker-configuration.d.ts
-
-tmp/
