@@ -1,5 +1,6 @@
 packages:
   - "apps/backend"
+  - "apps/frontend"
   - "packages/common"
 
 # Supply-chain delay: refuse versions younger than 7 days.

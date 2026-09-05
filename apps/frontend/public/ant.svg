@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 88" fill="none">
+  <title>Муравей</title>
+  <rect width="88" height="88" rx="28" fill="#e5e9d9"/>
+  <g stroke="#3b5137" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m37 40-12-6-5 4m18 9-15 2-4 7m18-3-8 11 1 7m21-31 12-6 5 4M50 47l15 2 4 7M51 53l8 11-1 7M40 28l-5-10m13 10 5-10"/>
+  </g>
+  <g fill="#3b5137">
+    <ellipse cx="44" cy="59" rx="11" ry="13"/>
+    <ellipse cx="44" cy="43" rx="7" ry="10"/>
+    <circle cx="44" cy="30" r="9"/>
+  </g>
+</svg>
