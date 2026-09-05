@@ -1,0 +1,14 @@
+packages:
+  - "apps/backend"
+  - "packages/common"
+
+# Supply-chain delay: refuse versions younger than 7 days.
+minimumReleaseAge: 10080
+
+strictDepBuilds: true
+
+allowBuilds:
+  "@biomejs/biome": true
+  esbuild: true
+  sharp: true
+  workerd: true

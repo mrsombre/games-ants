@@ -1,0 +1,11 @@
+{
+  "name": "@app/common",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./api/health": "./src/api/health.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  }
+}

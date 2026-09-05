@@ -1,0 +1,2 @@
+# Local overrides are optional. No secrets or bindings are required for the scaffold.
+# Declare future variable names in wrangler.jsonc before adding them here.

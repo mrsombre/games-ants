@@ -1,0 +1,14 @@
+{
+  "name": "backend",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@app/common": "workspace:*",
+    "hono": "^4.13.5"
+  }
+}

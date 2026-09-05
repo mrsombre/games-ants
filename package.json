@@ -1,0 +1,23 @@
+{
+  "name": "games-ants",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=24",
+    "pnpm": ">=11"
+  },
+  "scripts": {
+    "check": "biome check --write .",
+    "check:ci": "biome check .",
+    "test": "pnpm --reporter=append-only run -r --parallel --if-present --no-bail test",
+    "type-check": "pnpm types && pnpm --reporter=append-only run -r --parallel --if-present --no-bail type-check",
+    "types": "wrangler types --strict-vars=false"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.7",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10",
+    "wrangler": "^4.118.0"
+  }
+}
