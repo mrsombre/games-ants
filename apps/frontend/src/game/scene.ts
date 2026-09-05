@@ -154,7 +154,7 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
               .lineTo(px + width - 10, py + 43)
               .stroke({ color: 0xc2a36d, width: 2 });
           }
-        } else g.roundRect(px + 4, py + 4, CELL - 8, CELL - 8, 15).fill(color);
+        } else g.roundRect(px + 18, py + 18, 16, 16, 5).fill(color);
         for (const [dx = 0, dy = 0] of [
           [1, 0],
           [-1, 0],
@@ -165,12 +165,22 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
             (colony[key(x + dx, y + dy)] && (tile === "corridor" || colony[key(x + dx, y + dy)] === "corridor")) ||
             (x === 8 && y === 0 && dy === -1)
           ) {
-            g.rect(
-              px + 18 + (dx < 0 ? -18 : 0),
-              py + 18 + (dy < 0 ? -18 : 0),
-              dx === 0 ? 16 : 34,
-              dy === 0 ? 16 : 34,
-            ).fill(color);
+            if (room) {
+              // Bridge only the room's outer margin; keep the passage out of its interior.
+              g.rect(
+                px + (dx < 0 ? 0 : dx > 0 ? CELL - 4 : 18),
+                py + (dy < 0 ? 0 : dy > 0 ? CELL - 4 : 18),
+                dx === 0 ? 16 : 4,
+                dy === 0 ? 16 : 4,
+              ).fill(0x796246);
+            } else {
+              g.rect(
+                px + 18 + (dx < 0 ? -18 : 0),
+                py + 18 + (dy < 0 ? -18 : 0),
+                dx === 0 ? 16 : 34,
+                dy === 0 ? 16 : 34,
+              ).fill(color);
+            }
           }
         if (room) {
           g.moveTo(px + 10, py + 43)
