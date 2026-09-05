@@ -14,6 +14,3 @@ coverage/
 
 .wrangler/
 worker-configuration.d.ts
-
-# Local development screenshots and scratch files
-/tmp/
