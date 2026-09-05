@@ -1,13 +1,23 @@
 import { COLS, initialColony } from "./colony";
 import { advanceConstruction } from "./construction";
 import { advanceEggs } from "./eggs";
-import { type Ant, ENTRANCE, type Game, HOME, type Role, type Scout, SURFACE_EXIT } from "./model";
+import {
+  type Ant,
+  ENTRANCE,
+  type Game,
+  HOME,
+  type Role,
+  type Scout,
+  SURFACE_EXIT,
+  WANDER_MAX_SECONDS,
+  WANDER_MIN_SECONDS,
+} from "./model";
 import { move, routeTo } from "./navigation";
 import { advanceSpawns } from "./spawning";
 import { assignTasks, updateWorker } from "./tasks";
 
 function createAnt(id: number, role: Role): Ant {
-  const body = { ...HOME, id, route: [], heading: 0 };
+  const body = { ...HOME, id, route: [], heading: 0, wandering: false, wanderWait: 0 };
   switch (role) {
     case "worker":
       return { ...body, role, task: null, working: false };
@@ -69,9 +79,16 @@ function updateScout(game: Game, ant: Scout, seconds: number, random: () => numb
 // Call with fixed short steps. Travel time never contributes to construction.
 export function stepGame(game: Game, seconds: number, random: () => number = Math.random) {
   advanceEggs(game, seconds);
-  assignTasks(game);
+  for (const ant of game.ants) {
+    if (!ant.wandering && !ant.route.length && ant.wanderWait > 0) {
+      ant.wanderWait = Math.max(0, ant.wanderWait - seconds);
+      if (ant.wanderWait < 1e-9) ant.wanderWait = 0;
+    }
+  }
+  assignTasks(game, random);
   for (const blueprint of Object.values(game.blueprints)) blueprint.workers = 0;
   for (const ant of game.ants) {
+    const wasWandering = ant.wandering;
     switch (ant.role) {
       case "scout":
         updateScout(game, ant, seconds, random);
@@ -81,8 +98,11 @@ export function stepGame(game: Game, seconds: number, random: () => number = Mat
         break;
       case "warrior":
         if (ant.route.length) move(ant, seconds);
-        else if (ant.phase === "patrol") ant.route = [{ x: 5 + random() * 6, y: SURFACE_EXIT.y }];
         break;
+    }
+    if (wasWandering && !ant.route.length) {
+      ant.wandering = false;
+      ant.wanderWait = WANDER_MIN_SECONDS + random() * (WANDER_MAX_SECONDS - WANDER_MIN_SECONDS);
     }
   }
   advanceConstruction(game, seconds);

@@ -132,4 +132,23 @@ describe("living colony", () => {
       expect(ant?.x).toBeLessThanOrEqual(11);
     }
   });
+  it.each([
+    [0, 5],
+    [0.999999, 29.999975],
+  ])("waits 5–30 seconds after reaching a fallback destination (rng %s)", (random, wait) => {
+    const game = builders(1);
+    delete game.colony["9,2"];
+    delete game.colony["11,2"];
+    const worker = game.ants[0];
+    if (!worker) throw new Error("missing worker");
+    for (let i = 0; i < 200 && (i === 0 || worker.wandering); i++) stepGame(game, 0.05, () => random);
+    expect(worker.route).toEqual([]);
+    expect(worker.wanderWait).toBeCloseTo(wait);
+    advance(game, wait - 0.05, () => random);
+    expect(worker.wandering).toBe(false);
+    expect(worker.route).toEqual([]);
+    advance(game, 0.05, () => random);
+    expect(worker.wandering).toBe(true);
+    expect(worker.route.length).toBeGreaterThan(0);
+  });
 });

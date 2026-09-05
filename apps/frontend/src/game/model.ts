@@ -1,6 +1,12 @@
 import type { BuildTool, Colony, Point } from "./colony";
 
-type MovingAnt = Point & { id: number; route: Point[]; heading: number };
+type MovingAnt = Point & {
+  id: number;
+  route: Point[];
+  heading: number;
+  wandering: boolean;
+  wanderWait: number;
+};
 export type WorkerTask =
   | { kind: "build"; target: string; stand: Point }
   | { kind: "carry-egg"; eggId: number; destination: string; phase: "pickup" | "delivery" };
@@ -38,6 +44,9 @@ export const roles = {
 };
 export const EGG_SECONDS = 30;
 export const SPAWN_SECONDS = 10;
+export const WANDER_MIN_SECONDS = 5;
+export const WANDER_MAX_SECONDS = 30;
+export const WARRIOR_SURFACE_CHANCE = 0.75;
 export const buildSeconds = { corridor: 20, room: 30 };
 export const HOME: Point = { x: 10, y: 2 };
 export const ENTRANCE: Point = { x: 8, y: 0 };

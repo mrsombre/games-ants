@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { key } from "./colony";
 import { cancelLastBlueprint, planBuild } from "./construction";
 import { createGame, stepGame } from "./simulation";
 import { assignTasks } from "./tasks";
@@ -87,9 +88,32 @@ describe("colony task auction", () => {
   });
   it("assigns foraging and patrol only to the matching roles", () => {
     const game = createGame();
-    assignTasks(game);
+    assignTasks(game, () => 0);
     expect(game.ants.find((ant) => ant.role === "scout")?.phase).toBe("outbound");
     expect(game.ants.find((ant) => ant.role === "warrior")?.phase).toBe("patrol");
     expect(game.ants.filter((ant) => ant.role === "worker").every((ant) => ant.task === null)).toBe(true);
+  });
+  it("sends idle workers through the colony and lets real work interrupt wandering", () => {
+    const game = workers();
+    assignTasks(game, () => 0);
+    expect(game.ants.every((ant) => ant.wandering && ant.route.length > 0)).toBe(true);
+    planBuild(game, 8, 5, "corridor");
+    assignTasks(game, () => 0);
+    expect(game.ants.every((ant) => ant.task?.kind === "build" && !ant.wandering)).toBe(true);
+  });
+  it.each([
+    [0.749999, "patrol", -0.7],
+    [0.75, "home", 0],
+  ] as const)("sends warriors to the surface three quarters of the time (rng %s)", (choice, phase, minimumY) => {
+    const game = createGame();
+    game.ants = game.ants.filter((ant) => ant.role === "warrior");
+    const values = [choice, 0];
+    assignTasks(game, () => values.shift() ?? 0);
+    const warrior = game.ants[0];
+    if (warrior?.role !== "warrior") throw new Error("missing warrior");
+    expect(warrior.phase).toBe(phase);
+    expect(warrior.route.at(-1)?.y).toBeGreaterThanOrEqual(minimumY);
+    if (phase === "patrol") expect(warrior.route.at(-1)?.y).toBe(-0.7);
+    else expect(game.colony[key(warrior.route.at(-1)?.x ?? -1, warrior.route.at(-1)?.y ?? -1)]).toBeDefined();
   });
 });

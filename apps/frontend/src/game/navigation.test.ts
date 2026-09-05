@@ -22,6 +22,8 @@ it("spends movement distance along waypoints without cutting corners or overshoo
     x: 8,
     y: 1,
     heading: 0,
+    wandering: false,
+    wanderWait: 0,
     task: null,
     working: false,
     route: [

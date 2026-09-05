@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { planBuild } from "./construction";
 import { demolish } from "./demolition";
-import { type Game, HOME } from "./model";
+import type { Game } from "./model";
 import { createGame, stepGame } from "./simulation";
 
 function advance(game: Game, seconds: number) {
@@ -56,9 +56,12 @@ describe("egg lifecycle", () => {
   });
   it("carries a clutch visibly before storing it in the farthest reachable room cell", () => {
     const game = workerGame();
-    advance(game, 30.8);
+    advance(game, 30);
     expect(game.eggs).toHaveLength(1);
-    expect(game.eggs[0]?.location).toEqual({ carrier: 1 });
+    for (let i = 0; i < 200 && game.eggs[0] && "cell" in game.eggs[0].location; i++) {
+      stepGame(game, 0.05, () => 0.5);
+    }
+    expect(game.eggs[0]?.location).toHaveProperty("carrier");
     advance(game, 5);
     expect(game.eggs[0]?.location).toEqual({ cell: "6,1" });
     expect(game.ants.every((ant) => ant.role !== "worker" || ant.task === null)).toBe(true);
@@ -95,6 +98,6 @@ describe("egg lifecycle", () => {
     game.nextEggId = 2;
     advance(game, 10);
     expect(game.eggs[0]?.location).toEqual({ cell: "9,2" });
-    expect(game.ants.every((ant) => ant.x === HOME.x && ant.y === HOME.y)).toBe(true);
+    expect(game.ants.every((ant) => ant.role !== "worker" || ant.task?.kind !== "carry-egg")).toBe(true);
   });
 });
