@@ -31,6 +31,7 @@ function availableTasks(game: Game): Task[] {
     const nursery = new Set(nurseryCells(game).map((p) => key(p.x, p.y)));
     for (const egg of game.eggs) {
       if (!("cell" in egg.location) || !nursery.has(egg.location.cell)) continue;
+      if (game.enemies.some((enemy) => enemy.targetEggId === egg.id)) continue;
       if (game.spawns.some((spawn) => spawn.eggId === egg.id)) continue;
       if (game.ants.some((ant) => ant.role === "worker" && ant.task?.kind === "carry-egg" && ant.task.eggId === egg.id))
         continue;
@@ -118,7 +119,7 @@ export function assignTasks(game: Game, random: () => number = Math.random) {
       ant.route = ant.route.slice(0, 1);
     }
   }
-  const ants = game.ants.filter(free).sort((a, b) => a.id - b.id);
+  const ants = game.ants.filter((ant) => free(ant) && !game.enemies.length).sort((a, b) => a.id - b.id);
   while (ants.length) {
     const tasks = availableTasks(game);
     let winner: Bid | undefined;

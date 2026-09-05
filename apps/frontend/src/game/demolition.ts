@@ -48,7 +48,7 @@ export function demolish(game: Game, x: number, y: number) {
   const retreat = neighbors({ x, y }).find((p) => connected(tile, game.colony[key(p.x, p.y)], p.y === y));
   delete game.colony[id];
   delete game.blueprints[id];
-  for (const ant of game.ants) {
+  for (const ant of [...game.ants, ...game.enemies]) {
     const next = ant.route[0];
     const occupiesCell = key(Math.round(ant.x), Math.round(ant.y)) === id;
     const leavesCell = next && key(next.x - Math.sign(next.x - ant.x), next.y - Math.sign(next.y - ant.y)) === id;

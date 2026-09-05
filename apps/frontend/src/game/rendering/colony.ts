@@ -1,7 +1,6 @@
 import type { Graphics } from "pixi.js";
 import { COLS, type Colony, key, placementError, ROWS, roomSpan, type Tool } from "../colony";
 import { CELL, SURFACE } from "./layout";
-import { drawQueen } from "./queen";
 
 // Rectangles cover the center-to-edge corridor and only the room's outer margin.
 const passages = [
@@ -55,7 +54,6 @@ function drawRoom(g: Graphics, colony: Colony, x: number, y: number) {
   g.moveTo(px + 10, py + 43)
     .lineTo(px + 42, py + 43)
     .stroke({ color: 0xc2a36d, width: 2 });
-  if (colony[key(x, y)] === "queen") drawQueen(g, px, py);
 }
 function drawPassages(g: Graphics, colony: Colony, x: number, y: number) {
   const corridor = colony[key(x, y)] === "corridor";

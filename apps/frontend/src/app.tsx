@@ -46,7 +46,12 @@ export function App() {
         <div className="scene-panel">
           <div className="scene-heading">
             <span>
-              <i /> Лесная поляна
+              <i />{" "}
+              {game.queen.hp <= 0
+                ? "Королева погибла"
+                : game.enemies.length
+                  ? `Атака · врагов: ${game.enemies.length}`
+                  : "Лесная поляна"}
             </span>
             <span className="scouts-away" role="img" aria-label={`В разведке: ${scoutsAway.length}`}>
               {scoutsAway.map((scout) => (

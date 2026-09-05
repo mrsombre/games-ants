@@ -14,6 +14,7 @@ export function nurseryCells(game: Game) {
 }
 
 export function advanceEggs(game: Game, seconds: number) {
+  if (game.queen.hp <= 0) return;
   const available = nurseryCells(game).filter((p) => !roomCellOccupied(game, key(p.x, p.y)));
   if (!available.length) return;
   game.eggTimer += seconds;

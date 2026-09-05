@@ -5,6 +5,7 @@ import type { Game } from "./model";
 import { createGame, stepGame } from "./simulation";
 
 function advance(game: Game, seconds: number) {
+  game.attackTimer = Number.POSITIVE_INFINITY;
   for (let i = 0; i < Math.round(seconds / 0.05); i++) stepGame(game, 0.05, () => 0.5);
 }
 

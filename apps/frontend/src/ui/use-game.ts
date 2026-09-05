@@ -49,6 +49,9 @@ export function useGame() {
           last = now;
           while (accumulator >= SIMULATION_STEP) {
             for (const event of stepGame(game, SIMULATION_STEP)) {
+              if (event.kind === "attack-started") setMessage(`Атака! Врагов: ${event.count}. Воины идут на перехват.`);
+              if (event.kind === "attack-ended") setMessage("Набег окончен. Муравьи возвращаются к делам.");
+              if (event.kind === "queen-died") setMessage("Королева погибла. Новых яиц больше не будет.");
               if (event.kind === "scout-delivered") setMessage(scoutDeliveryMessage(event.cargo));
             }
             accumulator -= SIMULATION_STEP;

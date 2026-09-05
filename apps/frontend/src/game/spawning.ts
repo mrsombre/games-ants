@@ -8,7 +8,11 @@ export function spawnableEggs(game: Game) {
   const reserved = new Set(game.spawns.map((spawn) => spawn.eggId));
   return game.eggs.filter(
     (egg): egg is Egg & { location: { cell: string } } =>
-      "cell" in egg.location && !carried.has(egg.id) && !reserved.has(egg.id),
+      "cell" in egg.location &&
+      !!game.colony[egg.location.cell] &&
+      !carried.has(egg.id) &&
+      !reserved.has(egg.id) &&
+      !game.enemies.some((enemy) => enemy.targetEggId === egg.id),
   );
 }
 
@@ -25,6 +29,9 @@ export function startSpawn(game: Game, role: Role, random: () => number = Math.r
 
 export function advanceSpawns(game: Game, seconds: number, createAnt: (id: number, role: Role) => Ant) {
   for (const spawn of game.spawns) {
+    const egg = game.eggs.find((entry) => entry.id === spawn.eggId);
+    if (!egg || !("cell" in egg.location)) continue;
+    spawn.cell = egg.location.cell;
     spawn.progress = Math.min(1, spawn.progress + seconds / SPAWN_SECONDS);
     if (spawn.progress < 1 - 1e-9) continue;
     const eggIndex = game.eggs.findIndex((egg) => egg.id === spawn.eggId);

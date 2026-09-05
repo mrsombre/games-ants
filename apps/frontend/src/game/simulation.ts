@@ -1,4 +1,5 @@
 import { COLS, initialColony, key, type Point, point } from "./colony";
+import { advanceAttack, attackDelay, engaged, fight, updateDefense } from "./combat";
 import { advanceConstruction } from "./construction";
 import { advanceEggs } from "./eggs";
 import {
@@ -7,7 +8,10 @@ import {
   type Game,
   type GameEvent,
   HOME,
+  MAX_ENEMIES,
+  QUEEN_HP,
   type Role,
+  roles,
   type Scout,
   type ScoutCargo,
   SURFACE_EXIT,
@@ -20,7 +24,17 @@ import { advanceSpawns } from "./spawning";
 import { assignTasks, updateWorker } from "./tasks";
 
 function createAnt(id: number, role: Role, position: Point = HOME): Ant {
-  const body = { ...position, id, route: [], heading: 0, wandering: false, wanderWait: 0 };
+  const body = {
+    hp: roles[role].hp,
+    attackWait: 0,
+    healWait: 0,
+    ...position,
+    id,
+    route: [],
+    heading: 0,
+    wandering: false,
+    wanderWait: 0,
+  };
   switch (role) {
     case "worker":
       return { ...body, role, task: null, working: false };
@@ -43,9 +57,14 @@ export function createGame(random: () => number = Math.random): Game {
   });
   const eggCell = key(random() < 0.5 ? HOME.x - 1 : HOME.x + 1, HOME.y);
   return {
+    queen: { ...HOME, role: "queen", hp: QUEEN_HP, attackWait: 0, healWait: 0, heading: 0 },
     colony: { ...initialColony },
     blueprints: {},
     ants,
+    enemies: [],
+    attackTimer: attackDelay(random),
+    maxEnemies: MAX_ENEMIES,
+    raidsStarted: 0,
     eggs: [{ id: 1, location: { cell: eggCell } }],
     eggTimer: 0,
     nextEggId: 2,
@@ -83,7 +102,10 @@ function updateScout(game: Game, ant: Scout, seconds: number, random: () => numb
       }
       return;
     case "returning": {
-      if (!ant.cargo) return;
+      if (!ant.cargo) {
+        ant.phase = "home";
+        return;
+      }
       const cargo = ant.cargo;
       const food = scoutCargoFood[cargo];
       game.food += food;
@@ -103,6 +125,7 @@ function scoutCargo(roll: number): ScoutCargo {
 // Call with fixed short steps. Travel time never contributes to construction.
 export function stepGame(game: Game, seconds: number, random: () => number = Math.random) {
   const events: GameEvent[] = [];
+  advanceAttack(game, seconds, random, events);
   advanceEggs(game, seconds);
   for (const ant of game.ants) {
     if (!ant.wandering && !ant.route.length && ant.wanderWait > 0) {
@@ -113,6 +136,11 @@ export function stepGame(game: Game, seconds: number, random: () => number = Mat
   assignTasks(game, random);
   for (const blueprint of Object.values(game.blueprints)) blueprint.workers = 0;
   for (const ant of game.ants) {
+    if (engaged(game, ant)) continue;
+    if (game.enemies.length && (ant.role !== "scout" || ant.phase === "home" || ant.phase === "outbound")) {
+      updateDefense(game, ant, seconds);
+      continue;
+    }
     const wasWandering = ant.wandering;
     switch (ant.role) {
       case "scout":
@@ -133,6 +161,7 @@ export function stepGame(game: Game, seconds: number, random: () => number = Mat
       ant.wanderWait = WANDER_MIN_SECONDS + random() * (WANDER_MAX_SECONDS - WANDER_MIN_SECONDS);
     }
   }
+  fight(game, seconds, events);
   advanceConstruction(game, seconds);
   advanceSpawns(game, seconds, createAnt);
   return events;

@@ -1,19 +1,39 @@
 import { Container, Graphics } from "pixi.js";
 import { point } from "../colony";
-import { type Ant, EGG_SECONDS, type Game, HOME, roles, type ScoutCargo } from "../model";
+import { type Creature, EGG_SECONDS, enemyTraits, type Game, HOME, QUEEN_HP, roles, type ScoutCargo } from "../model";
 import { CELL, SURFACE } from "./layout";
+import { drawQueen } from "./queen";
 
 export function createCreatures() {
   const layer = new Container();
   const construction = new Graphics();
   const eggs = new Graphics();
+  const queen = new Graphics();
   const creatures = new Container();
-  layer.addChild(construction, eggs, creatures);
+  layer.addChild(construction, eggs, queen, creatures);
   const sprites = new Map<number, Graphics>();
   function renderSimulation(game: Game, time: number) {
     drawBlueprints(construction, game.blueprints);
     drawEggs(eggs, game);
-    for (const ant of game.ants) {
+    queen.clear();
+    if (game.queen.hp > 0) {
+      const x = HOME.x * CELL,
+        y = SURFACE + HOME.y * CELL;
+      drawQueen(queen, x, y);
+      if (game.queen.hp < QUEEN_HP) {
+        queen.roundRect(x + 6, y + 3, 40, 3, 1).fill(0x56382d);
+        queen.roundRect(x + 6, y + 3, (40 * game.queen.hp) / QUEEN_HP, 3, 1).fill(0xa9df79);
+      }
+    }
+    const living = [...game.ants, ...game.enemies];
+    const ids = new Set(living.map((ant) => ant.id));
+    for (const [id, sprite] of sprites) {
+      if (!ids.has(id)) {
+        sprite.destroy();
+        sprites.delete(id);
+      }
+    }
+    for (const ant of living) {
       let sprite = sprites.get(ant.id);
       if (!sprite) {
         sprite = new Graphics();
@@ -51,6 +71,7 @@ function drawEggs(g: Graphics, game: Game) {
       g.roundRect(x - 16, y + 14, 32 * spawn.progress, 4, 1).fill(roles[spawn.role].color);
     }
   }
+  if (game.queen.hp <= 0) return;
   const x = HOME.x * CELL + 10;
   const y = SURFACE + HOME.y * CELL + 43;
   g.roundRect(x, y, CELL - 20, 3, 1).fill(0x695034);
@@ -77,9 +98,9 @@ function drawBlueprints(construction: Graphics, blueprints: Game["blueprints"]) 
       construction.circle(px + 7 + i * 5, py + 8, 1.5).fill(0xf1cd77);
   }
 }
-function drawAnt(sprite: Graphics, ant: Ant, time: number, carryingEgg: boolean) {
+function drawAnt(sprite: Graphics, ant: Creature, time: number, carryingEgg: boolean) {
   sprite.clear();
-  const { color, size } = roles[ant.role];
+  const { color, size, hp } = ant.role === "enemy" ? enemyTraits : roles[ant.role];
   const moving = ant.route.length > 0 || (ant.role === "worker" && ant.working);
   for (const side of [-1, 1])
     for (let leg = 0; leg < 3; leg++) {
@@ -95,7 +116,7 @@ function drawAnt(sprite: Graphics, ant: Ant, time: number, carryingEgg: boolean)
     .fill(color)
     .ellipse(0, 0, 4, 2.8)
     .fill(color)
-    .circle(8, 0, ant.role === "warrior" ? 5 : 3.5)
+    .circle(8, 0, ant.role === "warrior" || ant.role === "enemy" ? 5 : 3.5)
     .fill(color);
   sprite.moveTo(10, -2).lineTo(15, -6).moveTo(10, 2).lineTo(15, 6).stroke({ color, width: 1.2 });
   sprite.circle(9, -1.5, 1).fill(0x241f1c);
@@ -104,9 +125,11 @@ function drawAnt(sprite: Graphics, ant: Ant, time: number, carryingEgg: boolean)
     for (const offset of [-4, 0, 4])
       sprite.ellipse(18, offset, 5, 3).fill(0xf5e8bc).stroke({ color: 0xc5ad75, width: 0.7 });
   }
-  if (ant.role === "warrior")
+  if (ant.role === "warrior" || ant.role === "enemy")
     sprite.moveTo(11, -3).lineTo(15, -2).moveTo(11, 3).lineTo(15, 2).stroke({ color: 0xf4c1a3, width: 2 });
   if (ant.role === "scout" && ant.cargo) drawScoutCargo(sprite, ant.cargo);
+  if (ant.hp < hp)
+    for (let i = 0; i < hp; i++) sprite.circle(-6 + i * 6, -14, 2).fill(i < ant.hp ? 0xa9df79 : 0x56382d);
   sprite.scale.set(size);
   // Small per-ant offsets make workers sharing a site visible inside the passage.
   sprite.position.set((ant.x + 0.5) * CELL, SURFACE + (ant.y + 0.5) * CELL + ((ant.id % 3) - 1) * 3);
