@@ -5,6 +5,7 @@ import { queenOf } from "./model";
 import { createGame, stepGame } from "./simulation";
 import { startSpawn } from "./spawning";
 import { foodStock } from "./storage";
+import { SURFACE_POST } from "./tasks";
 import { addUnit, advance, egg, food, world } from "./test-support";
 
 it("creates independent games with unique unit ids and valid initial positions", () => {
@@ -438,4 +439,29 @@ it("walks a wounded raider off the map and a wounded ant back home", () => {
   advance(game, 10);
   expect(ant.hp).toBe(8);
   expect(ant.fleeing).toBe(false);
+});
+
+it("walks the predator off the map once its term is over and closes the incident there", () => {
+  const game = world();
+  const spider = addUnit(game, "spider", { x: 3, y: 0 }, "raiders");
+  game.narrator.active = "predator";
+  game.narrator.effect = { kind: "predator", until: game.elapsedSeconds + 1 };
+  advance(game, 0.5);
+  expect(spider.job).toEqual({ kind: "guard", destination: SURFACE_POST });
+  const events = advance(game, 30);
+  expect(game.units.filter((unit) => unit.faction === "raiders")).toEqual([]);
+  expect(events.at(-1)).toEqual({ kind: "incident-ended", incident: "predator" });
+  expect(game.narrator.active).toBeNull();
+});
+it("lets a raid wave pass the posted predator and enter the nest", () => {
+  const game = world();
+  const spider = addUnit(game, "spider", { x: 8, y: 0 }, "raiders");
+  game.narrator.effect = { kind: "predator", until: 1000 };
+  const raider = addUnit(game, "warrior", { x: 14, y: 0 }, "raiders");
+  advance(game, 5);
+  // The raider crossed the post at (8,0) on its way down: an ally never blocks the front.
+  expect(raider.cell.y).toBeGreaterThan(0);
+  expect(raider.job).toMatchObject({ kind: "attack" });
+  expect(spider.cell).toEqual(SURFACE_POST);
+  expect(spider.hp).toBe(spider.maxHp);
 });

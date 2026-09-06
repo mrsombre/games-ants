@@ -10,6 +10,7 @@ import {
   createNarrator,
   FORAGE_MAX_SECONDS,
   FORAGE_MIN_SECONDS,
+  forageAllowed,
   forageSeconds,
   forageWeights,
   incidentOf,
@@ -19,7 +20,10 @@ import {
   NEARBY_MIN_SECONDS,
   narratorConfig,
   nextRandom,
+  PREDATOR_SECONDS,
+  PREDATOR_TRIP,
   pickIncident,
+  predatorAlive,
   raidRoles,
   richForageWeight,
   settleIncidents,
@@ -125,6 +129,7 @@ it("keeps the catalog v1 kinds, classes and sizes", () => {
     ["thieves", "threat"],
     ["boss", "threat"],
     ["flood", "threat"],
+    ["predator", "threat"],
     ["rich-forage", "boon"],
     ["food-nearby", "boon"],
   ]);
@@ -151,7 +156,16 @@ it("keeps the catalog v1 kinds, classes and sizes", () => {
   ]);
 });
 it("raises the food-nearby weight only while food is short", () => {
-  const hungry = { consumptions: 1.99, warriors: 1, queenHurt: false, freeEggs: 0, depth: 0, lastLoss: 0, weak: false };
+  const hungry = {
+    consumptions: 1.99,
+    warriors: 1,
+    scouts: 0,
+    queenHurt: false,
+    freeEggs: 0,
+    depth: 0,
+    lastLoss: 0,
+    weak: false,
+  };
   const fed = { ...hungry, consumptions: narratorConfig.weakConsumptions };
   const nearby = incidentOf("food-nearby");
   expect(nearby.weight(hungry)).toBeCloseTo(2, 8);
@@ -184,7 +198,16 @@ it("counts free eggs as a thieves signal", () => {
   expect(incidents.find((incident) => incident.kind === "thieves")?.weight(signals(game))).toBeCloseTo(0.75, 8);
 });
 it("softens large threats and doubles boons for a weak colony without zeroing any weight", () => {
-  const weak = { consumptions: 0, warriors: 0, queenHurt: true, freeEggs: 0, depth: 0, lastLoss: 0.5, weak: true };
+  const weak = {
+    consumptions: 0,
+    warriors: 0,
+    scouts: 0,
+    queenHurt: true,
+    freeEggs: 0,
+    depth: 0,
+    lastLoss: 0.5,
+    weak: true,
+  };
   const strong = { ...weak, weak: false };
   for (const incident of incidents) {
     const base = incident.weight(strong);
@@ -388,7 +411,16 @@ it("grows the boss escort with colony strength and caps it at three raiders", ()
   expect(boss.size(game)).toBe(3);
 });
 it("raises the boss weight once the colony fields two warriors and still spares a weak colony", () => {
-  const alone = { consumptions: 3, warriors: 1, queenHurt: false, freeEggs: 0, depth: 0, lastLoss: 0, weak: false };
+  const alone = {
+    consumptions: 3,
+    warriors: 1,
+    scouts: 0,
+    queenHurt: false,
+    freeEggs: 0,
+    depth: 0,
+    lastLoss: 0,
+    weak: false,
+  };
   const armed = { ...alone, warriors: narratorConfig.bossWarriors };
   const boss = incidentOf("boss");
   expect(boss.weight(alone)).toBeCloseTo(narratorConfig.bossWeight, 8);
@@ -400,7 +432,16 @@ it("raises the boss weight once the colony fields two warriors and still spares 
   );
 });
 it("weighs the flood by the number of built rows and sizes it by colony strength", () => {
-  const shallow = { consumptions: 3, warriors: 1, queenHurt: false, freeEggs: 0, depth: 4, lastLoss: 0, weak: false };
+  const shallow = {
+    consumptions: 3,
+    warriors: 1,
+    scouts: 0,
+    queenHurt: false,
+    freeEggs: 0,
+    depth: 4,
+    lastLoss: 0,
+    weak: false,
+  };
   const deep = { ...shallow, depth: narratorConfig.floodDepthRows };
   const flood = incidentOf("flood");
   expect(flood.weight(shallow)).toBeCloseTo(narratorConfig.floodWeight, 8);
@@ -457,4 +498,113 @@ it("seeds a fresh game from the seed argument and stays reproducible through the
   expect(advance(first, 60)).toEqual(advance(second, 60));
   expect(first.narrator).toEqual(second.narrator);
   expect(createGame(() => 0.25).narrator.rng).toBe(createNarrator(0.25 * 4294967296).rng);
+});
+
+it("counts scouts as the predator signal", () => {
+  const game = world();
+  const predator = incidentOf("predator");
+  expect(signals(game).scouts).toBe(0);
+  expect(predator.weight(signals(game))).toBeCloseTo(narratorConfig.predatorWeight, 8);
+  addUnit(game, "scout");
+  addUnit(game, "scout");
+  addUnit(game, "worker");
+  expect(signals(game).scouts).toBe(2);
+  expect(predator.weight(signals(game))).toBeCloseTo(
+    narratorConfig.predatorWeight + 2 * narratorConfig.predatorScoutWeight,
+    8,
+  );
+  expect(narratorConfig.predatorScoutWeight).toBeGreaterThan(0);
+});
+it("sends a single spider and keeps the predator threat open for its whole term", () => {
+  const game = narrated();
+  const predator = incidentOf("predator");
+  expect(predator.size(game)).toBe(1);
+  for (let i = 0; i < 40; i++) addUnit(game, "warrior");
+  expect(predator.size(game)).toBe(1);
+  expect(predator.end).toBeUndefined();
+  game.narrator.pending = { incident: "predator", size: 1, at: 0 };
+  game.elapsedSeconds = 1;
+  const events: GameEvent[] = [];
+  advanceNarrator(game, 0.05, events);
+  expect(events).toEqual([{ kind: "incident-started", incident: "predator", size: 1 }]);
+  const raiders = game.units.filter((unit) => unit.faction === "raiders");
+  expect(raiders.map((unit) => unit.role)).toEqual(["spider"]);
+  expect(raiders[0]?.cell.y).toBe(0);
+  expect(game.narrator.effect).toEqual({ kind: "predator", until: 1 + PREDATOR_SECONDS });
+  expect(game.narrator.active).toBe("predator");
+  expect(run(game, 60)).toEqual([]);
+  expect(game.narrator.active).toBe("predator");
+  game.elapsedSeconds = 1 + PREDATOR_SECONDS;
+  settleIncidents(game, events);
+  expect(game.narrator.effect).toBeNull();
+  expect(game.narrator.active).toBe("predator");
+  game.units = game.units.filter((unit) => unit.faction === "colony");
+  settleIncidents(game, events);
+  expect(events.at(-1)).toEqual({ kind: "incident-ended", incident: "predator" });
+  expect(game.narrator.active).toBeNull();
+});
+it("closes the predator incident on the spider's death before its term is over", () => {
+  const game = narrated();
+  incidentOf("predator").start(game, 1);
+  game.narrator.active = "predator";
+  const events: GameEvent[] = [];
+  settleIncidents(game, events);
+  expect(events).toEqual([]);
+  expect(game.narrator.active).toBe("predator");
+  game.units = game.units.filter((unit) => unit.faction === "colony");
+  game.elapsedSeconds = 1;
+  settleIncidents(game, events);
+  expect(game.elapsedSeconds).toBeLessThan(PREDATOR_SECONDS);
+  expect(events).toEqual([{ kind: "incident-ended", incident: "predator" }]);
+  expect(game.narrator.active).toBeNull();
+  expect(game.narrator.effect).toBeNull();
+});
+it("keeps the flood running its full term with no carrier on the map", () => {
+  const game = narrated();
+  incidentOf("flood").start(game, 1);
+  game.narrator.effect = { kind: "flood", until: 30 };
+  game.narrator.active = "flood";
+  const events: GameEvent[] = [];
+  settleIncidents(game, events);
+  expect(events).toEqual([]);
+  expect(game.narrator.effect).toEqual({ kind: "flood", until: 30 });
+  game.elapsedSeconds = 30;
+  settleIncidents(game, events);
+  expect(game.narrator.effect).toBeNull();
+  expect(events).toEqual([{ kind: "incident-ended", incident: "flood" }]);
+});
+it("stretches every forage trip while the predator is alive and demands a surface escort", () => {
+  const game = world();
+  expect(forageAllowed(game)).toBe(true);
+  expect(forageSeconds(game, 1)).toBe(FORAGE_MAX_SECONDS);
+  const spider = addUnit(game, "spider", { x: 3, y: 0 }, "raiders");
+  expect(predatorAlive(game)).toBe(true);
+  expect(forageSeconds(game, 1)).toBeCloseTo(FORAGE_MAX_SECONDS * PREDATOR_TRIP, 8);
+  expect(forageSeconds(game, 0)).toBeCloseTo(FORAGE_MIN_SECONDS * PREDATOR_TRIP, 8);
+  expect(PREDATOR_TRIP).toBeGreaterThan(1);
+  expect(forageAllowed(game)).toBe(false);
+  const guardian = addUnit(game, "warrior", { x: 9, y: 3 });
+  expect(forageAllowed(game)).toBe(false);
+  guardian.cell = { x: 9, y: 0 };
+  expect(forageAllowed(game)).toBe(true);
+  guardian.hp = 0;
+  expect(forageAllowed(game)).toBe(false);
+  addUnit(game, "scout", { x: 9, y: 0 });
+  expect(forageAllowed(game)).toBe(false);
+  addUnit(game, "warrior", { x: 9, y: 0 }, "raiders");
+  expect(forageAllowed(game)).toBe(false);
+  spider.hp = 0;
+  expect(predatorAlive(game)).toBe(false);
+  expect(forageAllowed(game)).toBe(true);
+  expect(forageSeconds(game, 1)).toBe(FORAGE_MAX_SECONDS);
+});
+it("plans no other incident while the predator holds the threat open", () => {
+  const game = narrated();
+  incidentOf("predator").start(game, 1);
+  game.narrator.active = "predator";
+  game.narrator.census = colonyAnts(game).length;
+  expect(run(game, 900)).toEqual([]);
+  expect(game.narrator.active).toBe("predator");
+  expect(game.narrator.pending).toBeNull();
+  expect(game.units.filter((unit) => unit.faction === "raiders").map((unit) => unit.role)).toEqual(["spider"]);
 });

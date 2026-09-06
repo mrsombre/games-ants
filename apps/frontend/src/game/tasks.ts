@@ -6,14 +6,17 @@ import { isFlooded } from "./flood";
 import { canCarry, itemReserved } from "./items";
 import type { Job } from "./jobs";
 import { type Game, homeOf } from "./model";
+import { forageAllowed } from "./narrator";
 import { type Navigation, setRoute } from "./navigation";
 import { spawnClaimed } from "./spawning";
 import { foodStorageCells, storageCapacity } from "./storage";
-import { type Faction, present, traits, type Unit } from "./units";
+import { type Faction, isSurface, present, traits, type Unit } from "./units";
 
 export const WANDER_MIN_SECONDS = 5;
 export const WANDER_MAX_SECONDS = 30;
 export const WARRIOR_SURFACE_CHANCE = 0.75;
+// Row 0 hangs on the nest by the single edge (8,0) - (8,1), so a surface unit posts above it.
+export const SURFACE_POST: Cell = { x: ENTRANCE.x, y: 0 };
 type Offer = { job: Job; target: Cell; priority: number; locks: string[]; preference: number };
 type Bid = { unit: Unit; offer: Offer; route: Cell[]; cost: number };
 function offer(job: Job, target: Cell, priority: number, locks: string[] = [], preference = 0): Offer {
@@ -43,7 +46,7 @@ function availableOffers(game: Game, faction: Faction, navigation: Navigation, r
           offers.push(offer({ kind: "build", target, stand }, stand, 100, [`build:${target}:${slot}`]));
       }
     }
-    if (storageCapacity(game) > 0) {
+    if (storageCapacity(game) > 0 && forageAllowed(game)) {
       const exit = { x: random() < 0.5 ? -1 : COLS, y: 0 };
       offers.push(offer({ kind: "forage", phase: "outbound", exit, remaining: 0 }, exit, 80));
     }
@@ -84,6 +87,16 @@ function availableOffers(game: Game, faction: Faction, navigation: Navigation, r
     }
   }
   return offers;
+}
+const surfaceEnemy = (game: Game, unit: Unit) =>
+  game.units.some((other) => present(other) && other.faction !== unit.faction && other.cell.y === 0);
+// A lasting threat keeps its surface unit on watch; once the effect is over it takes the exit.
+const surfacePost = (game: Game, unit: Unit) => isSurface(unit) && !!game.narrator.effect && !surfaceEnemy(game, unit);
+function surfaceOffer(game: Game, unit: Unit) {
+  if (!isSurface(unit) || surfaceEnemy(game, unit)) return;
+  return surfacePost(game, unit)
+    ? offer({ kind: "guard", destination: SURFACE_POST }, SURFACE_POST, 10)
+    : offer({ kind: "leave", destination: EXIT }, EXIT, 10);
 }
 function eligible(game: Game, unit: Unit, job: Job) {
   if (!traits[unit.role].jobs.includes(job.kind)) return false;
@@ -126,7 +139,12 @@ export function assignTasks(
   const bids: Bid[] = [];
   for (const unit of free) {
     const idle = fallback(game, unit, navigation, random);
-    for (const candidate of idle ? [...offers, idle] : offers) {
+    const post = surfaceOffer(game, unit);
+    const own = isSurface(unit)
+      ? offers.filter((candidate) => candidate.target.y === 0 && candidate.job.kind !== "leave")
+      : offers;
+    const extra = [...(idle ? [idle] : []), ...(post ? [post] : [])];
+    for (const candidate of [...own, ...extra]) {
       if (!eligible(game, unit, candidate.job)) continue;
       const route = navigation.from(unit, candidate.target);
       if (!route) continue;
@@ -172,9 +190,14 @@ export function jobValid(game: Game, unit: Unit) {
     }
     case "attack":
       return game.units.some(
-        (target) => target.id === job.targetId && present(target) && target.faction !== unit.faction,
+        (target) =>
+          target.id === job.targetId &&
+          present(target) &&
+          target.faction !== unit.faction &&
+          (!isSurface(unit) || target.cell.y === 0),
       );
     case "guard":
+      if (isSurface(unit)) return surfacePost(game, unit);
       return game.units.some((target) => present(target) && target.faction !== unit.faction);
     case "forage":
     case "leave":

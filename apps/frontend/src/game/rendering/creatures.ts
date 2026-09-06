@@ -127,10 +127,11 @@ function drawAnt(sprite: Graphics, ant: Unit, time: number, carryingEgg: boolean
   if (ant.role === "queen") return;
   const { size } = roles[ant.role];
   const beetle = ant.role === "beetle";
-  const color = beetle || ant.faction === "colony" ? roles[ant.role].color : 0xff7900;
+  const spider = ant.role === "spider";
+  const color = beetle || spider || ant.faction === "colony" ? roles[ant.role].color : 0xff7900;
   const moving = ant.route.length > 0 || (ant.role === "worker" && ant.working);
   for (const side of [-1, 1])
-    for (let leg = 0; leg < 3; leg++) {
+    for (let leg = 0; leg < (spider ? 4 : 3); leg++) {
       const swing = moving ? Math.sin(time * 15 + leg * 2 + side * 2) * 2 : 0;
       sprite
         .moveTo(-3 + leg * 3, 0)
@@ -138,13 +139,25 @@ function drawAnt(sprite: Graphics, ant: Unit, time: number, carryingEgg: boolean
         .lineTo(-10 + leg * 9 + swing, side * 9)
         .stroke({ color, width: 1.5, cap: "round" });
     }
-  sprite
-    .ellipse(-8, 0, 6, 4)
-    .fill(color)
-    .ellipse(0, 0, 4, 2.8)
-    .fill(color)
-    .circle(8, 0, ant.role === "warrior" ? 5 : 3.5)
-    .fill(color);
+  if (spider) {
+    sprite
+      .ellipse(-9, 0, 9, 7)
+      .fill(color)
+      .stroke({ color: 0x211c2b, width: 1 })
+      .circle(4, 0, 5)
+      .fill(color)
+      .stroke({ color: 0x211c2b, width: 1 });
+    for (const eye of [-2, 2]) sprite.circle(7, eye, 1).fill(0xf0d38a);
+    sprite.moveTo(8, -2).lineTo(13, -5).moveTo(8, 2).lineTo(13, 5).stroke({ color: 0x211c2b, width: 1.5 });
+  } else {
+    sprite
+      .ellipse(-8, 0, 6, 4)
+      .fill(color)
+      .ellipse(0, 0, 4, 2.8)
+      .fill(color)
+      .circle(8, 0, ant.role === "warrior" ? 5 : 3.5)
+      .fill(color);
+  }
   if (beetle) {
     sprite
       .ellipse(-6, 0, 11, 8)
@@ -154,8 +167,10 @@ function drawAnt(sprite: Graphics, ant: Unit, time: number, carryingEgg: boolean
       .lineTo(2, 0)
       .stroke({ color: 0x2b1d47, width: 1.2 });
   }
-  sprite.moveTo(10, -2).lineTo(15, -6).moveTo(10, 2).lineTo(15, 6).stroke({ color, width: 1.2 });
-  sprite.circle(9, -1.5, 1).fill(0x241f1c);
+  if (!spider) {
+    sprite.moveTo(10, -2).lineTo(15, -6).moveTo(10, 2).lineTo(15, 6).stroke({ color, width: 1.2 });
+    sprite.circle(9, -1.5, 1).fill(0x241f1c);
+  }
   if (ant.role === "worker") sprite.rect(-3, -3, 4, 6).fill(0xf3d581);
   if (carryingEgg) {
     for (const offset of [-4, 0, 4])

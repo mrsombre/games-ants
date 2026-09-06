@@ -2,9 +2,9 @@ import type { Cell } from "./cells";
 import type { Job, JobKind } from "./jobs";
 
 export type Faction = "colony" | "raiders";
-export type Role = "worker" | "scout" | "warrior" | "queen" | "beetle";
+export type Role = "worker" | "scout" | "warrior" | "queen" | "beetle" | "spider";
 export type Stance = "fight" | "evade";
-export type SpawnRole = Exclude<Role, "queen" | "beetle">;
+export type SpawnRole = Exclude<Role, "queen" | "beetle" | "spider">;
 export type RaidRole = Exclude<Role, "queen">;
 export type Unit = {
   readonly id: number;
@@ -25,7 +25,16 @@ export type Unit = {
   healWait: number;
   fleeing: boolean;
 };
-type Traits = { hp: number; bite: number; speed: number; stance: Stance; flee: number; jobs: readonly JobKind[] };
+type Traits = {
+  hp: number;
+  bite: number;
+  speed: number;
+  stance: Stance;
+  flee: number;
+  // A surface unit keeps to row 0: it takes only targets and points there.
+  surface: boolean;
+  jobs: readonly JobKind[];
+};
 export const traits: Record<Role, Traits> = {
   worker: {
     hp: 8,
@@ -33,6 +42,7 @@ export const traits: Record<Role, Traits> = {
     speed: 1,
     stance: "evade",
     flee: 0.5,
+    surface: false,
     jobs: ["build", "haul", "guard", "wander", "leave", "attack"],
   },
   scout: {
@@ -41,12 +51,31 @@ export const traits: Record<Role, Traits> = {
     speed: 3,
     stance: "evade",
     flee: 0.5,
+    surface: false,
     jobs: ["forage", "haul", "attack", "wander", "leave"],
   },
-  warrior: { hp: 24, bite: 4, speed: 2, stance: "fight", flee: 0.25, jobs: ["attack", "wander", "leave"] },
-  queen: { hp: 24, bite: 4, speed: 0.25, stance: "fight", flee: 0, jobs: ["nest"] },
-  beetle: { hp: 80, bite: 6, speed: 1, stance: "fight", flee: 0, jobs: ["attack"] },
+  warrior: {
+    hp: 24,
+    bite: 4,
+    speed: 2,
+    stance: "fight",
+    flee: 0.25,
+    surface: false,
+    jobs: ["attack", "wander", "leave"],
+  },
+  queen: { hp: 24, bite: 4, speed: 0.25, stance: "fight", flee: 0, surface: false, jobs: ["nest"] },
+  beetle: { hp: 80, bite: 6, speed: 1, stance: "fight", flee: 0, surface: false, jobs: ["attack"] },
+  spider: {
+    hp: 40,
+    bite: 5,
+    speed: 1,
+    stance: "fight",
+    flee: 0,
+    surface: true,
+    jobs: ["attack", "guard", "leave"],
+  },
 };
+export const isSurface = (unit: Unit) => traits[unit.role].surface;
 export const spawnCost: Record<SpawnRole, number> = { worker: 1, scout: 2, warrior: 3 };
 export function createUnit(id: number, role: Role, faction: Faction, cell: Cell): Unit {
   const { hp, bite, speed } = traits[role];

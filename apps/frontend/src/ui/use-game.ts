@@ -108,6 +108,7 @@ const incidentEnd: Record<IncidentKind, string> = {
   thieves: "Воры ушли. Расплод снова под присмотром.",
   boss: "Жук повержен. Колония выстояла.",
   flood: "Вода ушла. Затопленные клетки снова свободны, но пусты.",
+  predator: "Паук ушёл с поляны. Разведчики снова ходят за едой без охраны.",
   "rich-forage": "Богатый участок опустел.",
   "food-nearby": "Еда рядом с гнездом закончилась.",
 };
@@ -116,6 +117,8 @@ function incidentWarning(incident: IncidentKind, seconds: number) {
   if (incident === "thieves") return `Разведка заметила воров ${when}. Прикрой расплод!`;
   if (incident === "boss") return `Из леса ползёт жук ${when}. Собирай всех воинов!`;
   if (incident === "flood") return `Снизу подступает вода ${when}. Выноси еду и кладки из нижней камеры!`;
+  if (incident === "predator")
+    return `На поляну выходит паук ${when}. Отправь воина наверх — без охраны походов не будет!`;
   return `Враги подходят ${when}. Готовь воинов!`;
 }
 function incidentStart(incident: IncidentKind, size: number) {
@@ -132,6 +135,10 @@ function incidentStart(incident: IncidentKind, size: number) {
       return size > 0
         ? `Нижняя камера затоплена! Клеток под водой: ${size}. Еда и кладки в них погибли.`
         : "Вода поднялась и тут же ушла: топить было нечего.";
+    case "predator":
+      return size > 1
+        ? `Пауки на поляне! Их ${size}. Разведчики выходят только с воином.`
+        : "Паук на поляне! Разведчики выходят только с воином, походы стали дольше.";
     case "rich-forage":
       return "Разведчики нашли богатый участок: гусеницы попадаются чаще.";
     case "food-nearby":

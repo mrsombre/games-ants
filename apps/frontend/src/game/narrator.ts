@@ -7,7 +7,7 @@ import { spawnableEggs } from "./spawning";
 import { foodStock } from "./storage";
 import { type RaidRole, type SpawnRole, spawnCost } from "./units";
 
-export type IncidentKind = "raid" | "thieves" | "boss" | "flood" | "rich-forage" | "food-nearby";
+export type IncidentKind = "raid" | "thieves" | "boss" | "flood" | "predator" | "rich-forage" | "food-nearby";
 export type IncidentClass = "threat" | "boon";
 export type TensionPhase = "buildup" | "peak" | "recovery";
 export type Narrator = {
@@ -48,7 +48,11 @@ export const narratorConfig = {
   floodWeight: 0.5,
   floodDeepWeight: 0.5,
   floodDepthRows: 5,
+  predatorWeight: 0.3,
+  predatorScoutWeight: 0.3,
 };
+export const PREDATOR_SECONDS = 120;
+export const PREDATOR_TRIP = 1.5;
 
 export function nextRandom(narrator: Narrator) {
   narrator.rng = (Math.imul(narrator.rng, 1664525) + 1013904223) >>> 0;
@@ -89,6 +93,7 @@ export const strength = (game: Game) =>
 export type Signals = {
   consumptions: number;
   warriors: number;
+  scouts: number;
   queenHurt: boolean;
   freeEggs: number;
   depth: number;
@@ -98,6 +103,7 @@ export type Signals = {
 export function signals(game: Game): Signals {
   const ants = colonyAnts(game);
   const warriors = ants.filter((unit) => unit.role === "warrior").length;
+  const scouts = ants.filter((unit) => unit.role === "scout").length;
   const queen = queenOf(game);
   const queenHurt = !!queen && queen.hp < queen.maxHp;
   const consumptions = foodStock(game) / FOOD_CONSUMPTION;
@@ -107,6 +113,7 @@ export function signals(game: Game): Signals {
   return {
     consumptions,
     warriors,
+    scouts,
     queenHurt,
     freeEggs: spawnableEggs(game).length,
     depth: colonyDepth(game.colony),
@@ -125,6 +132,7 @@ export const bossRoles = (size: number): RaidRole[] => [
 ];
 export const waveSize = (game: Game, share: number, cap: number) =>
   Math.max(1, Math.min(cap, Math.ceil(strength(game) * share * game.narrator.difficulty)));
+const raidersOnMap = (game: Game) => game.units.some((unit) => unit.faction === "raiders");
 function startBoon(game: Game, kind: IncidentKind) {
   game.narrator.boon = { kind, until: game.elapsedSeconds + narratorConfig.boonSeconds };
 }
@@ -137,6 +145,8 @@ type Incident = {
   // Returns the size the incident actually reached: a wave brings exactly the asked-for
   // raiders, a flood may find fewer cells than requested.
   start: (game: Game, size: number) => number;
+  // A lasting effect ends the moment its carrier is gone, before the term runs out.
+  holds?: (game: Game) => boolean;
   end?: (game: Game) => void;
 };
 export const incidents: Incident[] = [
@@ -172,6 +182,18 @@ export const incidents: Incident[] = [
     size: (game) => waveSize(game, 0.03, 3),
     start: (game, size) => startFlood(game, size, nextRandom(game.narrator)),
     end: (game) => recedeFlood(game),
+  },
+  {
+    kind: "predator",
+    class: "threat",
+    weight: (signals) => narratorConfig.predatorWeight + narratorConfig.predatorScoutWeight * signals.scouts,
+    size: () => 1,
+    start: (game, size) => {
+      spawnWave(game, ["spider"], nextRandom(game.narrator));
+      game.narrator.effect = { kind: "predator", until: game.elapsedSeconds + PREDATOR_SECONDS };
+      return size;
+    },
+    holds: raidersOnMap,
   },
   {
     kind: "rich-forage",
@@ -275,11 +297,11 @@ export function settleIncidents(game: Game, events: GameEvent[]) {
     narrator.boon = null;
   }
   const effect = narrator.effect;
-  if (effect && game.elapsedSeconds >= effect.until) {
+  if (effect && (game.elapsedSeconds >= effect.until || !(incidentOf(effect.kind).holds?.(game) ?? true))) {
     incidentOf(effect.kind).end?.(game);
     narrator.effect = null;
   }
-  if (narrator.active && !narrator.effect && !game.units.some((unit) => unit.faction === "raiders")) {
+  if (narrator.active && !narrator.effect && !raidersOnMap(game)) {
     const survivors = colonyAnts(game).length;
     narrator.lastLoss = narrator.census > 0 ? Math.max(0, (narrator.census - survivors) / narrator.census) : 0;
     events.push({ kind: "incident-ended", incident: narrator.active });
@@ -294,7 +316,14 @@ export const NEARBY_MAX_SECONDS = 10;
 export const richForageWeight: Record<FoodKind, number> = { apple: 0.3, mushroom: 0.3, caterpillar: 0.4 };
 export const forageWeights = (game: Game) =>
   game.narrator.boon?.kind === "rich-forage" ? richForageWeight : forageWeight;
-export const forageSeconds = (game: Game, roll: number) =>
-  game.narrator.boon?.kind === "food-nearby"
-    ? NEARBY_MIN_SECONDS + roll * (NEARBY_MAX_SECONDS - NEARBY_MIN_SECONDS)
-    : FORAGE_MIN_SECONDS + roll * (FORAGE_MAX_SECONDS - FORAGE_MIN_SECONDS);
+export const predatorAlive = (game: Game) => game.units.some((unit) => unit.role === "spider" && unit.hp > 0);
+export const escorted = (game: Game) =>
+  game.units.some((unit) => unit.faction === "colony" && unit.role === "warrior" && unit.hp > 0 && unit.cell.y === 0);
+export const forageAllowed = (game: Game) => !predatorAlive(game) || escorted(game);
+export const forageSeconds = (game: Game, roll: number) => {
+  const base =
+    game.narrator.boon?.kind === "food-nearby"
+      ? NEARBY_MIN_SECONDS + roll * (NEARBY_MAX_SECONDS - NEARBY_MIN_SECONDS)
+      : FORAGE_MIN_SECONDS + roll * (FORAGE_MAX_SECONDS - FORAGE_MIN_SECONDS);
+  return predatorAlive(game) ? base * PREDATOR_TRIP : base;
+};
