@@ -16,7 +16,7 @@ it("creates independent games with unique unit ids and valid initial positions",
   const firstQueen = queenOf(first);
   if (!firstQueen) throw new Error("queen");
   firstQueen.hp = 0;
-  expect(queenOf(second)?.hp).toBe(10);
+  expect(queenOf(second)?.hp).toBe(24);
 });
 it.each([0, -1, 0.1, NaN, Infinity])("rejects an invalid simulation step without mutating the game (%s)", (seconds) => {
   const game = world(),
@@ -111,8 +111,8 @@ it("drops food and eggs immediately on combat contact, before damage, and releas
     { kind: "cell", cell: { x: 8, y: 3 } },
   ]);
   expect([worker.job, scout.job]).toEqual([null, null]);
-  expect([worker.hp, scout.hp, game.food]).toEqual([1, 2, 2]);
-  advance(game, 0.45);
+  expect([worker.hp, scout.hp, game.food]).toEqual([8, 10, 2]);
+  advance(game, 1.95);
   expect(game.units).not.toContain(worker);
 });
 it("recovers dropped food through the scout auction and credits it once", () => {
@@ -136,10 +136,13 @@ it("halts invaders at defenders and cannot cross occupied cells alive", () => {
   worker.job = { kind: "guard", destination: worker.cell };
   advance(game, 0.7);
   expect(enemy.cell).toEqual(worker.cell);
-  expect(worker.hp).toBe(1);
-  advance(game, 0.45);
+  expect(worker.hp).toBe(8);
+  advance(game, 1);
+  expect(worker.hp).toBe(4);
+  expect(enemy.hp).toBe(23);
+  advance(game, 1);
   expect(worker.hp).toBe(0);
-  expect(enemy.hp).toBe(2);
+  expect(enemy.hp).toBe(22);
   expect(enemy.cell).toEqual({ x: 8, y: 2 });
 });
 it("steals a reachable egg, escapes through the entrance, cancels hatching and ends the raid", () => {
@@ -164,7 +167,7 @@ it("fights at the queen even while stealing, emits death once and stops egg layi
   const events = advance(game, 1);
   expect(queen.hp).toBe(0);
   expect(queenOf(game)).toBe(queen);
-  expect(enemy.hp).toBe(2);
+  expect(enemy.hp).toBe(20);
   events.push(...advance(game, 35));
   expect(game.items).toEqual([]);
   expect(events.filter((event) => event.kind === "queen-died")).toHaveLength(1);
@@ -213,7 +216,7 @@ it("stops on contact reached during movement, preserves a carried item there and
   expect(enemy.cell).toEqual(worker.cell);
   expect(game.items[0]?.location).toEqual({ kind: "cell", cell: { x: 8, y: 2 } });
   expect(worker.route).toEqual([]);
-  expect(worker.hp).toBe(1);
+  expect(worker.hp).toBe(8);
 });
 it("emits only the scheduled raid event and gives subsequent waves fresh identifiers", () => {
   const game = createGame(() => 0.5);

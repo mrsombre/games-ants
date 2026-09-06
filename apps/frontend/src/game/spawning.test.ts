@@ -35,9 +35,9 @@ it("hatches exactly once after ten seconds and consumes the reserved egg at its 
     role: "warrior",
     faction: "colony",
     cell: { x: 6, y: 2 },
-    hp: 3,
+    hp: 24,
     speed: 1.5,
-    bite: 1,
+    bite: 4,
   });
 });
 

@@ -2,8 +2,8 @@ import { cellKey } from "./cells";
 import { EPSILON } from "./model";
 import { present, type Unit } from "./units";
 
-export const HIT_SECONDS = 0.5;
-export const HEAL_SECONDS = 10;
+export const HIT_SECONDS = 1;
+export const HEAL_SECONDS = 2;
 export function contacts(units: readonly Unit[]) {
   const cells = new Map<string, Map<Unit["faction"], Unit>>();
   for (const unit of units) {
