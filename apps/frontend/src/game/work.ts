@@ -1,5 +1,5 @@
 import { type Cell, cellKey, point, sameCell } from "./cells";
-import { dropCargo, type FoodKind, foodValue, type Item, pickUp } from "./items";
+import { dropCargo, type FoodKind, foodValue, forage, type Item, pickUp } from "./items";
 import { EPSILON, type Game, type GameEvent } from "./model";
 import { type Navigation, setRoute } from "./navigation";
 import { foodStorageCells, freeSlots } from "./storage";
@@ -98,8 +98,7 @@ export function performJob(
       }
       job.remaining = Math.max(0, job.remaining - seconds);
       if (job.remaining > EPSILON) return;
-      const roll = random();
-      const cargo: FoodKind = roll < 0.4 ? "apple" : roll < 0.8 ? "mushroom" : "caterpillar";
+      const cargo = forage(random());
       const id = game.nextItemId++;
       game.items.push({
         id,

@@ -9,6 +9,15 @@ export type Item = { id: number; location: ItemLocation } & (
   | { kind: "food"; food: FoodKind; portions: number }
 );
 export const foodValue: Record<FoodKind, number> = { apple: 1, mushroom: 1, caterpillar: 2 };
+export const forageWeight: Record<FoodKind, number> = { apple: 0.4, mushroom: 0.4, caterpillar: 0.2 };
+export function forage(roll: number): FoodKind {
+  let threshold = 0;
+  for (const kind of Object.keys(forageWeight) as FoodKind[]) {
+    threshold += forageWeight[kind];
+    if (roll < threshold) return kind;
+  }
+  return "caterpillar";
+}
 export const carriedItem = (game: Game, unit: Unit) =>
   game.items.find((item) => item.location.kind === "carried" && item.location.unitId === unit.id);
 export const itemReserved = (game: Game, id: number, exceptUnit?: number) =>
