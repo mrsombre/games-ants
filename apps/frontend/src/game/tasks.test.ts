@@ -117,7 +117,7 @@ it("reserves food for scouts and eggs for workers before execution, with food re
   expect(worker.job).toMatchObject({ kind: "haul", itemId: item.id });
   expect(scout.job).toMatchObject({ kind: "haul", itemId: 100, destination: { x: 10, y: 3 } });
 });
-it("awards a vertical room site from the corridor and never builds a corridor from a room", () => {
+it("awards build sites only through horizontal room passages or corridor-to-corridor links", () => {
   const game = world();
   const worker = addUnit(game, "worker", { x: 6, y: 2 });
   game.colony["7,3"] = "corridor";
@@ -128,7 +128,12 @@ it("awards a vertical room site from the corridor and never builds a corridor fr
   worker.route = [];
   game.blueprints = { "7,4": { tile: "room", progress: 0, workers: 0 } };
   auction(game);
-  expect(worker.job).toEqual({ kind: "build", target: "7,4", stand: { x: 7, y: 3 } });
+  expect(worker.job).toEqual({ kind: "build", target: "7,4", stand: { x: 8, y: 4 } });
+  worker.job = null;
+  worker.route = [];
+  game.blueprints = { "5,2": { tile: "corridor", progress: 0, workers: 0 } };
+  auction(game);
+  expect(worker.job).toEqual({ kind: "build", target: "5,2", stand: { x: 6, y: 2 } });
 });
 it("keeps raider loot delivery outside the map and does not send a healthy colony scout to patrol", () => {
   const game = world();
@@ -289,7 +294,7 @@ it("resolves equal pickup-plus-delivery costs by target key for one worker", () 
   auction(game);
   expect(worker.job).toEqual({ kind: "haul", itemId: right.id, destination: { x: 6, y: 2 }, phase: "pickup" });
 });
-it("requires a corridor work site even when a worker is beside the blueprint in a room", () => {
+it("lets a worker build a corridor sideways from the room it stands in", () => {
   const game = world();
   game.colony["6,3"] = "room";
   game.colony["6,4"] = "corridor";
@@ -297,7 +302,7 @@ it("requires a corridor work site even when a worker is beside the blueprint in 
   const worker = addUnit(game, "worker", { x: 6, y: 3 });
   expect(planBuild(game, 7, 3, "corridor")).toBeNull();
   auction(game);
-  expect(worker.job).toEqual({ kind: "build", target: "7,3", stand: { x: 7, y: 4 } });
+  expect(worker.job).toEqual({ kind: "build", target: "7,3", stand: { x: 6, y: 3 } });
 });
 it("keeps a raider waiting for an unreachable opponent instead of leaving or starting colony patrol", () => {
   const game = world();

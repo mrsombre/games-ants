@@ -31,7 +31,7 @@ function availableOffers(game: Game, faction: Faction, navigation: Navigation, r
       const cell = point(target);
       for (const stand of neighbors(cell)) {
         const tile = game.colony[cellKey(stand)];
-        if (blueprint.tile === "corridor" ? tile === "corridor" : connected(tile, "room", stand.y === cell.y)) {
+        if (connected(tile, blueprint.tile, stand.y === cell.y)) {
           offers.push(offer({ kind: "build", target, stand }, stand, 100));
         }
       }

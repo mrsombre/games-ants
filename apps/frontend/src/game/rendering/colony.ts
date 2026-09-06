@@ -1,13 +1,13 @@
 import type { Graphics } from "pixi.js";
 import { COLS, ENTRANCE, key, ROWS } from "../cells";
-import { type Colony, placementError, roomSpan, type Tool } from "../colony";
+import { type Colony, connected, placementError, roomSpan, type Tool } from "../colony";
 import { CELL, SURFACE } from "./layout";
 
 const passages = [
   { dx: 1, dy: 0, corridor: [18, 18, 34, 16], room: [48, 18, 4, 16] },
   { dx: -1, dy: 0, corridor: [0, 18, 34, 16], room: [0, 18, 4, 16] },
-  { dx: 0, dy: 1, corridor: [18, 18, 16, 34], room: [18, 48, 16, 4] },
-  { dx: 0, dy: -1, corridor: [18, 0, 16, 34], room: [18, 0, 16, 4] },
+  { dx: 0, dy: 1, corridor: [18, 18, 16, 34], room: null },
+  { dx: 0, dy: -1, corridor: [18, 0, 16, 34], room: null },
 ] as const;
 
 export function drawColony(g: Graphics, colony: Colony, planned: Colony, tool: Tool) {
@@ -56,13 +56,14 @@ function drawRoom(g: Graphics, colony: Colony, x: number, y: number) {
     .stroke({ color: 0xc2a36d, width: 2 });
 }
 function drawPassages(g: Graphics, colony: Colony, x: number, y: number) {
-  const corridor = colony[key(x, y)] === "corridor";
+  const tile = colony[key(x, y)];
   for (const passage of passages) {
     const neighbor = colony[key(x + passage.dx, y + passage.dy)];
     const entrance = x === ENTRANCE.x && y === ENTRANCE.y && passage.dy === -1;
-    const connected = neighbor && (corridor || neighbor === "corridor");
-    if (!entrance && !connected) continue;
-    const [left, top, width, height] = corridor ? passage.corridor : passage.room;
+    if (!entrance && !connected(tile, neighbor, passage.dy === 0)) continue;
+    const rect = tile === "corridor" ? passage.corridor : passage.room;
+    if (!rect) continue;
+    const [left, top, width, height] = rect;
     g.rect(x * CELL + left, SURFACE + y * CELL + top, width, height).fill(0x796246);
   }
 }

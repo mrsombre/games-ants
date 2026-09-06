@@ -86,10 +86,18 @@ it("validates integer cells including both bounds", () => {
   expect(() => point("broken")).toThrow();
 });
 
-it("connects a room vertically to a corridor in both directions, but never opens a second surface entrance", () => {
-  const nav = new Navigation({ "8,1": "corridor", "8,2": "room", "7,1": "corridor" });
-  expect(nav.route({ x: 8, y: 1 }, { x: 8, y: 2 })).toEqual([{ x: 8, y: 2 }]);
-  expect(nav.route({ x: 8, y: 2 }, { x: 8, y: 1 })).toEqual([{ x: 8, y: 1 }]);
+it("walls a room off from a vertical corridor in both directions, but never opens a second surface entrance", () => {
+  const nav = new Navigation({ "8,1": "corridor", "8,2": "room", "7,1": "corridor", "7,2": "corridor" });
+  expect(nav.route({ x: 8, y: 1 }, { x: 8, y: 2 })).toEqual([
+    { x: 7, y: 1 },
+    { x: 7, y: 2 },
+    { x: 8, y: 2 },
+  ]);
+  expect(nav.route({ x: 8, y: 2 }, { x: 8, y: 1 })).toEqual([
+    { x: 7, y: 2 },
+    { x: 7, y: 1 },
+    { x: 8, y: 1 },
+  ]);
   expect(nav.route({ x: 7, y: 0 }, { x: 7, y: 1 })).toEqual([
     { x: 8, y: 0 },
     { x: 8, y: 1 },

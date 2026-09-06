@@ -19,7 +19,7 @@ export const initialColony: Colony = {
   "11,3": "room",
 };
 export function connected(a: Tile | undefined, b: Tile | undefined, horizontal: boolean) {
-  return !!a && !!b && (a === "corridor" || b === "corridor" || horizontal);
+  return !!a && !!b && (horizontal || (a === "corridor" && b === "corridor"));
 }
 
 export function roomSpan(colony: Colony, x: number, y: number) {
@@ -33,10 +33,11 @@ export function placementError(colony: Colony, x: number, y: number, tool: Build
   if (!isCell(x, y)) return "Строй внутри подземной сетки";
   if (y <= 1) return "Верхний слой закрыт для строительства — вход уже готов";
   if (colony[key(x, y)]) return "Здесь уже построено";
-  const besideCorridor = neighbors({ x, y }).some((neighbor) => colony[key(neighbor.x, neighbor.y)] === "corridor");
-  if (tool === "corridor") return besideCorridor ? null : "Коридор можно продолжить только от коридора";
-  const expanding = isRoom(colony[key(x - 1, y)]) || isRoom(colony[key(x + 1, y)]);
-  if (roomSpan(colony, x, y).width > MAX_ROOM_WIDTH) return "Комната может быть шириной не больше 4 клеток";
-  if (!expanding && !besideCorridor) return "Начни комнату у коридора или расширь существующую влево или вправо";
-  return null;
+  if (tool === "room" && roomSpan(colony, x, y).width > MAX_ROOM_WIDTH)
+    return "Комната может быть шириной не больше 4 клеток";
+  if (neighbors({ x, y }).some((neighbor) => connected(tool, colony[key(neighbor.x, neighbor.y)], neighbor.y === y)))
+    return null;
+  return tool === "corridor"
+    ? "Коридор можно продолжить от коридора или начать сбоку от комнаты"
+    : "Начни комнату сбоку от коридора или расширь существующую влево или вправо";
 }

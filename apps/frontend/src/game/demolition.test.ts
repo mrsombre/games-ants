@@ -42,8 +42,7 @@ describe("demolition", () => {
     game.colony["7,5"] = "room";
     expect(demolitionError(game, 8, 5)).toBeTruthy();
     game.colony["6,3"] = "room";
-    game.colony["6,4"] = "corridor";
-    game.colony["7,4"] = "corridor";
+    game.colony["7,3"] = "corridor";
     expect(demolitionError(game, 7, 2)).toMatch(/отрезать/);
   });
   it("does not treat a loop as a corridor end", () => {
@@ -68,6 +67,8 @@ describe("demolition", () => {
     game.colony = { "8,1": "corridor", "8,2": "corridor", "8,3": "corridor", "7,3": "room", "6,3": "room" };
     expect(planBuild(game, 7, 2, "corridor")).toBeNull();
     expect(planBuild(game, 6, 2, "corridor")).toBeNull();
+    expect(planBuild(game, 5, 2, "corridor")).toBeNull();
+    expect(planBuild(game, 5, 3, "corridor")).toBeNull();
     expect(demolish(game, 7, 3)).toMatch(/отрезать/);
   });
   it("interrupts movement along a demolished segment and relocates to a connected cell", () => {
@@ -147,17 +148,16 @@ it("relocates a unit partway into a demolished cell and preserves items at the s
   expect(game.items[0]?.location).toEqual({ kind: "cell", cell: { x: 8, y: 4 } });
 });
 
-it("evacuates a removed room through a real passage rather than across a vertical room wall", () => {
+it("evacuates a removed room through a horizontal passage rather than across a vertical wall", () => {
   const game = createGame(() => 0.5);
   game.items = [];
   game.colony["6,3"] = "room";
-  game.colony["6,4"] = "corridor";
-  game.colony["7,4"] = "corridor";
+  game.colony["7,3"] = "corridor";
   const worker = game.units.find((unit) => unit.role === "worker");
   if (!worker) throw new Error("worker");
   worker.cell = { x: 6, y: 3 };
   expect(demolish(game, 6, 3)).toBeNull();
-  expect(worker.cell).toEqual({ x: 6, y: 4 });
+  expect(worker.cell).toEqual({ x: 7, y: 3 });
   worker.cell = { x: 6, y: 2 };
   expect(demolish(game, 6, 2)).toBeNull();
   expect(worker.cell).toEqual({ x: 7, y: 2 });
