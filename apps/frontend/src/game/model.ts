@@ -25,7 +25,7 @@ export type Game = {
   nestTimer: number;
   nextItemId: number;
   nextUnitId: number;
-  revision: number;
+  readonly revision: number;
   deliveries: number;
 };
 export const SIMULATION_STEP = 0.05;

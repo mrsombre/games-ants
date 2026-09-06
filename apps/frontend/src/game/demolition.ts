@@ -1,6 +1,6 @@
 import { cellKey, ENTRANCE, isCell, key, neighbors } from "./cells";
 import { type Colony, connected, isRoom, roomSpan } from "./colony";
-import { plannedColony } from "./construction";
+import { clearCell, plannedColony } from "./construction";
 import { roomCellOccupied } from "./eggs";
 import type { Game } from "./model";
 import { nestCells } from "./nesting";
@@ -49,8 +49,7 @@ export function demolish(game: Game, x: number, y: number) {
   const id = key(x, y);
   const tile = game.colony[id];
   const retreat = neighbors({ x, y }).find((p) => connected(tile, game.colony[key(p.x, p.y)], p.y === y));
-  delete game.colony[id];
-  delete game.blueprints[id];
+  clearCell(game, id);
   for (const unit of game.units) {
     if (retreat && cellKey(unit.cell) === id) {
       unit.cell = retreat;
@@ -60,6 +59,5 @@ export function demolish(game: Game, x: number, y: number) {
     }
   }
   for (const blueprint of Object.values(game.blueprints)) blueprint.workers = 0;
-  game.revision++;
   return null;
 }
