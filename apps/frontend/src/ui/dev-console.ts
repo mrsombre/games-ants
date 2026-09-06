@@ -1,5 +1,13 @@
 import type { DayPhaseId } from "../game/day-cycle";
-import { jumpToPhase, pauseNarrator, setDifficulty, skipTime, spawnUnit, startIncidentNow } from "../game/debug";
+import {
+  jumpToPhase,
+  pauseNarrator,
+  setDifficulty,
+  setFood,
+  skipTime,
+  spawnUnit,
+  startIncidentNow,
+} from "../game/debug";
 import type { Game, GameEvent } from "../game/model";
 import type { IncidentKind } from "../game/narrator";
 import type { Faction, Role } from "../game/units";
@@ -58,6 +66,11 @@ export function installDevConsole(game: Game, refresh: () => void, showMessage: 
       signature: "dev.spawn(role, x, y, faction?)",
       about: "Поставить юнита в клетку карты или служебную; фракция по умолчанию — raiders для beetle и spider",
       run: commanded((role: Role, x: number, y: number, faction?: Faction) => spawnUnit(game, role, x, y, faction)),
+    },
+    food: {
+      signature: "dev.food(n)",
+      about: "Привести запас еды на складе к n порциям: целое неотрицательное число",
+      run: commanded((amount: number) => setFood(game, amount)),
     },
     incident: {
       signature: "dev.incident(kind, size?)",

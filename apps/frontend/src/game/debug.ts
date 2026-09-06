@@ -1,8 +1,9 @@
-import { COLS, isCell } from "./cells";
+import { COLS, cellKey, isCell } from "./cells";
 import { DAY_PHASE_IDS, DAY_PHASE_SECONDS, type DayPhaseId } from "./day-cycle";
 import { type Game, type GameEvent, SIMULATION_STEP } from "./model";
 import { DAY_SECONDS, type IncidentKind, incidents, startIncident } from "./narrator";
 import { stepGame } from "./simulation";
+import { consumeFood, foodStock, foodStorageCells, freeSlots, storageCapacity } from "./storage";
 import { createUnit, type Faction, type Role, traits } from "./units";
 
 export function setDifficulty(game: Game, value: number): string | null {
@@ -67,5 +68,26 @@ export function spawnUnit(game: Game, role: Role, x: number, y: number, faction?
     return "Спавн: матка в колонии одна, вторую поставить нельзя";
   const side = faction ?? (RAID_ONLY.includes(role) ? "raiders" : "colony");
   game.units.push(createUnit(game.nextUnitId++, role, side, { x, y }));
+  return null;
+}
+
+export function setFood(game: Game, amount: number): string | null {
+  if (!Number.isInteger(amount) || amount < 0) return "Еда: нужно целое неотрицательное число";
+  const stock = foodStock(game);
+  // Free slots hold one portion each, so the reachable maximum is the stock plus them.
+  const limit = stock + storageCapacity(game);
+  if (amount > limit) return `Еда: на складе помещается не больше ${limit}`;
+  if (amount < stock) consumeFood(game, stock - amount);
+  const slots = foodStorageCells(game).flatMap((cell) =>
+    Array.from({ length: freeSlots(game, cellKey(cell)) }, () => cell),
+  );
+  for (const cell of slots.slice(0, amount - foodStock(game)))
+    game.items.push({
+      id: game.nextItemId++,
+      kind: "food",
+      food: "apple",
+      portions: 1,
+      location: { kind: "cell", cell },
+    });
   return null;
 }

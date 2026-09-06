@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { COLS, EXIT, HOME, ROWS } from "./cells";
 import { DAY_PHASE_IDS, DAY_PHASES, type DayPhaseId, dayPhase } from "./day-cycle";
-import { jumpToPhase, pauseNarrator, setDifficulty, skipTime, spawnUnit, startIncidentNow } from "./debug";
+import { jumpToPhase, pauseNarrator, setDifficulty, setFood, skipTime, spawnUnit, startIncidentNow } from "./debug";
 import { type GameEvent, SIMULATION_STEP } from "./model";
 import { advanceNarrator, createNarrator, incidentOf, settleIncidents } from "./narrator";
-import { addUnit, advance, world } from "./test-support";
+import { foodStock, STORAGE_SLOTS, storedFood } from "./storage";
+import { addUnit, advance, food, world } from "./test-support";
 import { applyTool } from "./tools";
 import type { Faction, Role } from "./units";
 
@@ -386,5 +387,66 @@ describe("spawn", () => {
     );
     expect(game.units.length).toBe(1);
     expect(game.nextUnitId).toBe(narrated().nextUnitId);
+  });
+});
+
+describe("food", () => {
+  it("fills empty storage up to the wanted stock with one-portion apples", () => {
+    const game = narrated();
+    expect(setFood(game, 4)).toBe(null);
+    expect(foodStock(game)).toBe(4);
+    expect(storedFood(game).map((item) => [item.food, item.portions])).toEqual([
+      ["apple", 1],
+      ["apple", 1],
+      ["apple", 1],
+      ["apple", 1],
+    ]);
+  });
+  it("spreads the apples over several storage cells without overfilling one", () => {
+    const game = narrated();
+    expect(setFood(game, 6)).toBe(null);
+    expect(foodStock(game)).toBe(6);
+    for (const id of ["6,2", "7,2"]) expect(foodStock(game, id)).toBe(STORAGE_SLOTS);
+  });
+  it("cuts the stock down to the wanted number and drops emptied items", () => {
+    const game = narrated();
+    food(game, { x: 6, y: 2 }, "caterpillar");
+    food(game, { x: 6, y: 2 });
+    expect(setFood(game, 1)).toBe(null);
+    expect(foodStock(game)).toBe(1);
+    expect(storedFood(game).length).toBe(1);
+  });
+  it("empties the storage on zero", () => {
+    const game = narrated();
+    food(game, { x: 6, y: 2 });
+    expect(setFood(game, 0)).toBe(null);
+    expect(foodStock(game)).toBe(0);
+    expect(storedFood(game)).toEqual([]);
+  });
+  it("keeps the stock when it already matches", () => {
+    const game = narrated();
+    const item = food(game, { x: 6, y: 2 }, "caterpillar");
+    expect(setFood(game, 2)).toBe(null);
+    expect(storedFood(game)).toEqual([item]);
+  });
+  it("refuses more than the storage holds and changes nothing", () => {
+    const game = narrated();
+    expect(setFood(game, 7)).toBe("Еда: на складе помещается не больше 6");
+    expect(foodStock(game)).toBe(0);
+    expect(game.items).toEqual([]);
+  });
+  it("counts the stock already in place when checking the capacity", () => {
+    const game = narrated();
+    food(game, { x: 6, y: 2 }, "caterpillar");
+    expect(setFood(game, 6)).toBe(null);
+    expect(foodStock(game)).toBe(6);
+    expect(setFood(game, 7)).toBe("Еда: на складе помещается не больше 6");
+  });
+  it("refuses negative and non-integer numbers and changes nothing", () => {
+    for (const amount of [-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, "2" as unknown as number]) {
+      const game = narrated();
+      expect(setFood(game, amount)).toBe("Еда: нужно целое неотрицательное число");
+      expect(game.items).toEqual([]);
+    }
   });
 });
