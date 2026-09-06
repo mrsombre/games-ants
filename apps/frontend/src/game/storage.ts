@@ -1,0 +1,44 @@
+import { type Cell, cellKey, point } from "./cells";
+import type { Item } from "./items";
+import type { Game } from "./model";
+
+export const STORAGE_SLOTS = 3;
+type StoredFood = Item & { kind: "food"; location: { kind: "cell"; cell: Cell } };
+
+export function storedFood(game: Game) {
+  return game.items.filter(
+    (item): item is StoredFood =>
+      item.kind === "food" && item.location.kind === "cell" && game.colony[cellKey(item.location.cell)] === "storage",
+  );
+}
+export const foodStock = (game: Game) => storedFood(game).reduce((sum, item) => sum + item.portions, 0);
+export function storageOccupancy(game: Game, id: string, exceptUnit?: number) {
+  return (
+    game.items.filter((item) => item.location.kind === "cell" && cellKey(item.location.cell) === id).length +
+    game.units.filter(
+      (unit) =>
+        unit.hp > 0 && unit.id !== exceptUnit && unit.job?.kind === "haul" && cellKey(unit.job.destination) === id,
+    ).length
+  );
+}
+export const freeSlots = (game: Game, id: string, exceptUnit?: number) =>
+  Math.max(0, STORAGE_SLOTS - storageOccupancy(game, id, exceptUnit));
+export function foodStorageCells(game: Game) {
+  return Object.entries(game.colony).flatMap(([id, tile]) =>
+    tile === "storage" && freeSlots(game, id) > 0 ? [point(id)] : [],
+  );
+}
+export const storageCapacity = (game: Game) =>
+  Object.entries(game.colony).reduce((sum, [id, tile]) => sum + (tile === "storage" ? freeSlots(game, id) : 0), 0);
+export function consumeFood(game: Game, amount: number) {
+  if (foodStock(game) < amount) return false;
+  let remaining = amount;
+  for (const item of storedFood(game)) {
+    if (remaining <= 0) break;
+    const eaten = Math.min(item.portions, remaining);
+    item.portions -= eaten;
+    remaining -= eaten;
+  }
+  game.items = game.items.filter((item) => item.kind !== "food" || item.portions > 0);
+  return true;
+}

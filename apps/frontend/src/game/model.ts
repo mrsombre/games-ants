@@ -7,6 +7,7 @@ import type { Unit } from "./units";
 
 export type GameEvent =
   | { kind: "scout-delivered"; scoutId: number; cargo: FoodKind; food: number }
+  | { kind: "food-discarded"; scoutId: number; cargo: FoodKind }
   | { kind: "attack-started"; count: number }
   | { kind: "attack-ended" }
   | { kind: "queen-died" };
@@ -23,7 +24,6 @@ export type Game = {
   nestTimer: number;
   nextItemId: number;
   nextUnitId: number;
-  food: number;
   revision: number;
   deliveries: number;
 };

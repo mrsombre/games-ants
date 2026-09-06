@@ -3,7 +3,7 @@ import { type BuildTool, type Colony, placementError } from "./colony";
 import { EPSILON, type Game } from "./model";
 
 export type Blueprint = { tile: BuildTool; progress: number; workers: number };
-export const buildSeconds = { corridor: 20, room: 30 };
+export const buildSeconds: Record<BuildTool, number> = { corridor: 20, nest: 30, storage: 30 };
 
 export function plannedColony(game: Game): Colony {
   return { ...game.colony, ...Object.fromEntries(Object.entries(game.blueprints).map(([id, b]) => [id, b.tile])) };

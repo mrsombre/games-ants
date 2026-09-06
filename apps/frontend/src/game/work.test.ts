@@ -1,7 +1,9 @@
 import { expect, it } from "vitest";
 import { HOME } from "./cells";
+import type { GameEvent } from "./model";
 import { Navigation, setRoute } from "./navigation";
-import { addUnit, advance, egg, world } from "./test-support";
+import { foodStock } from "./storage";
+import { addUnit, advance, egg, food, world } from "./test-support";
 import { interruptJob, performJob, prepareJobs } from "./work";
 
 it.each(["pickup", "delivery"] as const)(
@@ -11,12 +13,12 @@ it.each(["pickup", "delivery"] as const)(
     const worker = addUnit(game),
       other = addUnit(game);
     const item = egg(game, { x: 9, y: 3 });
-    worker.job = { kind: "haul", itemId: item.id, destination: { x: 6, y: 2 }, phase };
+    worker.job = { kind: "haul", itemId: item.id, destination: { x: 6, y: 4 }, phase };
     game.items = [{ ...item, location: { kind: "carried", unitId: other.id } }];
     prepareJobs(game, 0.05, new Navigation(game.colony));
     expect(worker.job).toBeNull();
     expect(game.items[0]?.location).toEqual({ kind: "carried", unitId: other.id });
-    worker.job = { kind: "haul", itemId: 999, destination: { x: 6, y: 2 }, phase: "pickup" };
+    worker.job = { kind: "haul", itemId: 999, destination: { x: 6, y: 4 }, phase: "pickup" };
     prepareJobs(game, 0.05, new Navigation(game.colony));
     expect(worker.job).toBeNull();
   },
@@ -95,16 +97,38 @@ it("interrupts an active wander at the current edge and resumes its remaining di
   expect(worker.route[0]).toEqual({ x: 8, y: 2 });
   expect(worker.travel).toBeCloseTo(0.55, 8);
 });
-it("delivers only the carried food, preserving other items and living units", () => {
+it("stores delivered food in the storage cell and reports it once, ignoring its own reservation", () => {
   const game = world();
-  const scout = addUnit(game, "scout");
+  const scout = addUnit(game, "scout", { x: 7, y: 2 });
   const retained = egg(game, { x: 9, y: 3 });
-  game.items.push({ id: 100, kind: "food", food: "apple", location: { kind: "carried", unitId: scout.id } });
-  scout.job = { kind: "forage", phase: "returning", exit: { x: -1, y: 0 }, remaining: 0 };
-  performJob(game, scout, 0.05, new Navigation(game.colony), () => 0.5, []);
-  expect(game.items).toEqual([retained]);
+  food(game, scout.cell);
+  food(game, scout.cell);
+  const cargo = food(game, scout.cell, "caterpillar");
+  cargo.location = { kind: "carried", unitId: scout.id };
+  scout.job = { kind: "haul", itemId: cargo.id, destination: scout.cell, phase: "delivery" };
+  const events: GameEvent[] = [];
+  performJob(game, scout, 0.05, new Navigation(game.colony), () => 0.5, events);
+  expect(cargo.location).toEqual({ kind: "cell", cell: { x: 7, y: 2 } });
+  expect(game.items).toContain(retained);
   expect(game.units).toHaveLength(2);
-  expect(game.food).toBe(3);
+  expect(foodStock(game)).toBe(4);
+  expect(game.deliveries).toBe(1);
+  expect(events).toEqual([{ kind: "scout-delivered", scoutId: scout.id, cargo: "caterpillar", food: 2 }]);
+  expect(scout.job).toBeNull();
+});
+it("throws food away at a storage cell that filled up on the way", () => {
+  const game = world();
+  const scout = addUnit(game, "scout", { x: 7, y: 2 });
+  for (let i = 0; i < 3; i++) food(game, scout.cell);
+  const cargo = food(game, scout.cell, "mushroom");
+  cargo.location = { kind: "carried", unitId: scout.id };
+  scout.job = { kind: "haul", itemId: cargo.id, destination: scout.cell, phase: "delivery" };
+  const events: GameEvent[] = [];
+  performJob(game, scout, 0.05, new Navigation(game.colony), () => 0.5, events);
+  expect(game.items).not.toContain(cargo);
+  expect(foodStock(game)).toBe(3);
+  expect(game.deliveries).toBe(0);
+  expect(events).toEqual([{ kind: "food-discarded", scoutId: scout.id, cargo: "mushroom" }]);
   expect(scout.job).toBeNull();
 });
 it("drops cargo at the actual cell on an explicit interruption and clears work and travel", () => {
@@ -112,7 +136,7 @@ it("drops cargo at the actual cell on an explicit interruption and clears work a
   const worker = addUnit(game);
   const item = egg(game, worker.cell);
   game.items = [{ ...item, location: { kind: "carried", unitId: worker.id } }];
-  worker.job = { kind: "haul", itemId: item.id, destination: { x: 6, y: 2 }, phase: "delivery" };
+  worker.job = { kind: "haul", itemId: item.id, destination: { x: 6, y: 4 }, phase: "delivery" };
   worker.route = [{ x: 9, y: 3 }];
   worker.travel = 0.5;
   worker.working = true;
@@ -132,7 +156,7 @@ it("never performs building or delivery remotely, and switches a successful pick
   expect(game.blueprints["8,6"]?.workers).toBe(0);
   expect(worker.working).toBe(false);
   const item = egg(game, worker.cell);
-  worker.job = { kind: "haul", itemId: item.id, destination: { x: 6, y: 2 }, phase: "pickup" };
+  worker.job = { kind: "haul", itemId: item.id, destination: { x: 6, y: 4 }, phase: "pickup" };
   performJob(game, worker, 0.05, navigation, () => 0.5, []);
   expect(worker.job).toMatchObject({ kind: "haul", phase: "delivery" });
   worker.route = [];
@@ -142,28 +166,45 @@ it("never performs building or delivery remotely, and switches a successful pick
 it("only removes a thief and its own loot on escape, preserving the queen and other eggs", () => {
   const game = world();
   const thief = addUnit(game, "worker", { x: -1, y: 0 }, "raiders");
-  const retained = egg(game, { x: 6, y: 2 });
+  const retained = egg(game, { x: 6, y: 4 });
   game.items.push({ id: 99, kind: "egg", location: { kind: "carried", unitId: thief.id } });
   thief.job = { kind: "haul", itemId: 99, destination: thief.cell, phase: "delivery" };
   performJob(game, thief, 0.05, new Navigation(game.colony), () => 0.5, []);
   expect(game.items).toEqual([retained]);
   expect(game.units.map((unit) => unit.id)).toEqual([0]);
 });
-it("keeps a scout's food until it reaches home and can recover when an expedition loses its cargo", () => {
+it("turns a finished expedition into a delivery to the nearest free storage cell and survives losing the cargo", () => {
   const game = world();
-  const scout = addUnit(game, "scout", { x: 8, y: 3 });
-  scout.job = { kind: "forage", phase: "returning", exit: { x: -1, y: 0 }, remaining: 0 };
-  game.items.push({ id: 99, kind: "food", food: "apple", location: { kind: "carried", unitId: scout.id } });
-  performJob(game, scout, 0.05, new Navigation(game.colony), () => 0.5, []);
-  expect(game.food).toBe(2);
-  expect(game.items).toHaveLength(1);
-  expect(scout.route.at(-1)).toEqual(HOME);
-  scout.cell = HOME;
+  const scout = addUnit(game, "scout", { x: -1, y: 0 });
+  scout.job = { kind: "forage", phase: "away", exit: scout.cell, remaining: 0 };
+  food(game, { x: 7, y: 2 });
+  food(game, { x: 7, y: 2 });
+  food(game, { x: 7, y: 2 });
+  performJob(game, scout, 0.05, new Navigation(game.colony), () => 0.9, []);
+  const cargo = game.items.find((item) => item.location.kind === "carried");
+  expect(cargo).toMatchObject({ kind: "food", food: "caterpillar", portions: 2 });
+  expect(scout.job).toEqual({ kind: "haul", itemId: cargo?.id, destination: { x: 6, y: 2 }, phase: "delivery" });
+  expect(scout.route.at(-1)).toEqual({ x: 6, y: 2 });
+  expect(foodStock(game)).toBe(3);
+  scout.cell = { x: 6, y: 2 };
   scout.route = [];
-  game.items = [];
+  game.items = game.items.filter((item) => item !== cargo);
   performJob(game, scout, 0.05, new Navigation(game.colony), () => 0.5, []);
-  expect(game.food).toBe(2);
+  expect(foodStock(game)).toBe(3);
   expect(scout.job).toBeNull();
+});
+it("discards the catch at the map edge when no storage slot is free and frees the scout", () => {
+  const game = world();
+  const scout = addUnit(game, "scout", { x: 18, y: 0 });
+  scout.job = { kind: "forage", phase: "away", exit: scout.cell, remaining: 0.04 };
+  for (const x of [6, 7]) for (let i = 0; i < 3; i++) food(game, { x, y: 2 });
+  const events: GameEvent[] = [];
+  performJob(game, scout, 0.05, new Navigation(game.colony), () => 0.5, events);
+  expect(game.items).toHaveLength(6);
+  expect(scout.job).toBeNull();
+  expect(scout.route).toEqual([]);
+  expect(events).toEqual([{ kind: "food-discarded", scoutId: scout.id, cargo: "mushroom" }]);
+  expect(game.nextItemId).toBe(11);
 });
 it("keeps a departing raider until the exit and leaves allied units in the world", () => {
   const game = world();

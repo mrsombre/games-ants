@@ -1,6 +1,7 @@
 import type { Graphics } from "pixi.js";
 import { COLS, ENTRANCE, key, ROWS } from "../cells";
-import { type Colony, connected, placementError, roomSpan, type Tool } from "../colony";
+import { type Colony, connected, placementError, type RoomTile, roomSpan, type Tool } from "../colony";
+import { STORAGE_SLOTS } from "../storage";
 import { CELL, SURFACE } from "./layout";
 
 const passages = [
@@ -22,7 +23,7 @@ export function drawColony(g: Graphics, colony: Colony, planned: Colony, tool: T
         continue;
       }
       if (tile === "corridor") g.roundRect(px + 18, py + 18, 16, 16, 5).fill(0x796246);
-      else drawRoom(g, colony, x, y);
+      else drawRoom(g, colony, x, y, tile);
       drawPassages(g, colony, x, y);
     }
 }
@@ -39,21 +40,30 @@ function drawVacantCell(g: Graphics, planned: Colony, tool: Tool, x: number, y: 
     .lineTo(px + 26, py + 29)
     .stroke({ color: 0xc1b78c, alpha: 0.45, width: 1 });
 }
-function drawRoom(g: Graphics, colony: Colony, x: number, y: number) {
+const roomPalette: Record<RoomTile, { shell: number; floor: number; edge: number }> = {
+  nest: { shell: 0x987546, floor: 0xac8c57, edge: 0xc2a36d },
+  storage: { shell: 0x6f6a55, floor: 0x86816a, edge: 0xa8a389 },
+};
+export const foodSlotX = (slot: number) => CELL / 2 + (Math.min(slot, STORAGE_SLOTS - 1) - 1) * 15;
+function drawRoom(g: Graphics, colony: Colony, x: number, y: number, tile: RoomTile) {
   const px = x * CELL,
     py = SURFACE + y * CELL;
+  const { shell, floor, edge } = roomPalette[tile];
   const span = roomSpan(colony, x, y);
   if (x === span.left) {
     const width = span.width * CELL;
-    g.roundRect(px + 4, py + 4, width - 8, CELL - 8, 9).fill(0x987546);
-    g.roundRect(px + 8, py + 8, width - 16, 33, 6).fill(0xac8c57);
+    g.roundRect(px + 4, py + 4, width - 8, CELL - 8, 9).fill(shell);
+    g.roundRect(px + 8, py + 8, width - 16, 33, 6).fill(floor);
     g.moveTo(px + 10, py + 43)
       .lineTo(px + width - 10, py + 43)
-      .stroke({ color: 0xc2a36d, width: 2 });
+      .stroke({ color: edge, width: 2 });
   }
   g.moveTo(px + 10, py + 43)
     .lineTo(px + 42, py + 43)
-    .stroke({ color: 0xc2a36d, width: 2 });
+    .stroke({ color: edge, width: 2 });
+  if (tile === "storage")
+    for (let slot = 0; slot < STORAGE_SLOTS; slot++)
+      g.circle(px + foodSlotX(slot), py + CELL / 2, 6).stroke({ color: edge, alpha: 0.5, width: 1 });
 }
 function drawPassages(g: Graphics, colony: Colony, x: number, y: number) {
   const tile = colony[key(x, y)];

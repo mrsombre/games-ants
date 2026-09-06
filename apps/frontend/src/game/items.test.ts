@@ -28,7 +28,7 @@ it("protects reservations and cancels hatching only when a raider physically pic
   const worker = addUnit(game),
     thief = addUnit(game, "worker", worker.cell, "raiders");
   const item = egg(game, worker.cell);
-  worker.job = { kind: "haul", itemId: item.id, destination: { x: 6, y: 2 }, phase: "pickup" };
+  worker.job = { kind: "haul", itemId: item.id, destination: { x: 6, y: 4 }, phase: "pickup" };
   expect(pickUp(game, thief, item)).toBe(false);
   worker.job = null;
   game.spawns = [{ eggId: item.id, role: "worker", progress: 0.5 }];
@@ -43,7 +43,7 @@ it("keeps other hatches and carriers intact when a scout picks up food or a thie
   const worker = addUnit(game),
     scout = addUnit(game, "scout");
   const item = egg(game, worker.cell),
-    retained = egg(game, { x: 6, y: 2 });
+    retained = egg(game, { x: 6, y: 4 });
   game.spawns = [
     { eggId: item.id, role: "worker", progress: 0 },
     { eggId: retained.id, role: "scout", progress: 0.2 },
@@ -52,6 +52,7 @@ it("keeps other hatches and carriers intact when a scout picks up food or a thie
     id: 100,
     kind: "food" as const,
     food: "apple" as const,
+    portions: 1,
     location: { kind: "cell" as const, cell: scout.cell },
   };
   game.items.push(food);

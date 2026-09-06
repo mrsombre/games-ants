@@ -19,7 +19,7 @@ it("routes between surface and nest through the protected entrance and respects 
     { x: 9, y: 3 },
     { x: 10, y: 3 },
   ]);
-  expect(new Navigation({ "1,2": "room", "1,3": "room" }).route({ x: 1, y: 2 }, { x: 1, y: 3 })).toBeNull();
+  expect(new Navigation({ "1,2": "nest", "1,3": "nest" }).route({ x: 1, y: 2 }, { x: 1, y: 3 })).toBeNull();
   expect(nav.route(ENTRANCE, ENTRANCE)).toEqual([]);
   expect(nav.route(HOME, { x: 8, y: 6 })).toBeNull();
   expect(nav.route({ x: 3, y: 3 }, HOME)).toBeNull();
@@ -87,7 +87,7 @@ it("validates integer cells including both bounds", () => {
 });
 
 it("walls a room off from a vertical corridor in both directions, but never opens a second surface entrance", () => {
-  const nav = new Navigation({ "8,1": "corridor", "8,2": "room", "7,1": "corridor", "7,2": "corridor" });
+  const nav = new Navigation({ "8,1": "corridor", "8,2": "nest", "7,1": "corridor", "7,2": "corridor" });
   expect(nav.route({ x: 8, y: 1 }, { x: 8, y: 2 })).toEqual([
     { x: 7, y: 1 },
     { x: 7, y: 2 },
@@ -126,7 +126,7 @@ it.each(["1.5,2", "1,1.5", "1", "bad,2", "1,bad"])("rejects malformed cell ident
 
 it("rejects soil-to-itself paths and vertical room walls even on the entrance column", () => {
   expect(new Navigation(initialColony).route({ x: 0, y: 9 }, { x: 0, y: 9 })).toBeNull();
-  expect(new Navigation({ "8,3": "room", "8,4": "room" }).route({ x: 8, y: 3 }, { x: 8, y: 4 })).toBeNull();
+  expect(new Navigation({ "8,3": "nest", "8,4": "nest" }).route({ x: 8, y: 3 }, { x: 8, y: 4 })).toBeNull();
 });
 it("can replace a pending route before any distance is traveled", () => {
   const unit = createUnit(1, "worker", "colony", { x: 8, y: 2 });

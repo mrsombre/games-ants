@@ -3,7 +3,8 @@ import { cancelLastBlueprint, planBuild } from "./construction";
 import { queenOf } from "./model";
 import { createGame, stepGame } from "./simulation";
 import { startSpawn } from "./spawning";
-import { addUnit, advance, egg, world } from "./test-support";
+import { foodStock } from "./storage";
+import { addUnit, advance, egg, food, world } from "./test-support";
 
 it("creates independent games with unique unit ids and valid initial positions", () => {
   const first = createGame(() => 0),
@@ -11,6 +12,7 @@ it("creates independent games with unique unit ids and valid initial positions",
   expect(new Set(first.units.map((unit) => unit.id)).size).toBe(6);
   expect(new Set(first.units.map((unit) => `${unit.cell.x},${unit.cell.y}`)).size).toBe(6);
   expect(first.items[0]?.location).toEqual({ kind: "cell", cell: { x: 9, y: 3 } });
+  expect(foodStock(first)).toBe(2);
   expect(first.units.slice(1).map((unit) => unit.cell)).not.toEqual(second.units.slice(1).map((unit) => unit.cell));
   expect(second.items[0]?.location).toEqual({ kind: "cell", cell: { x: 11, y: 3 } });
   const firstQueen = queenOf(first);
@@ -52,9 +54,9 @@ it("counts work only after arrival and frees a worker after cancellation", () =>
   expect(worker.job?.kind).toBe("wander");
   expect(game.colony["8,6"]).toBeUndefined();
 });
-it("waits for workers and completes a room after thirty working seconds", () => {
+it.each(["nest", "storage"] as const)("waits for workers and completes a %s after thirty working seconds", (tile) => {
   const game = world();
-  planBuild(game, 7, 5, "room");
+  planBuild(game, 7, 5, tile);
   advance(game, 10);
   expect(game.blueprints["7,5"]?.progress).toBe(0);
   const worker = addUnit(game, "worker", { x: 8, y: 5 });
@@ -62,7 +64,7 @@ it("waits for workers and completes a room after thirty working seconds", () => 
   expect(worker.heading).toBeCloseTo(Math.PI, 8);
   expect(game.colony["7,5"]).toBeUndefined();
   advance(game, 0.05);
-  expect(game.colony["7,5"]).toBe("room");
+  expect(game.colony["7,5"]).toBe(tile);
 });
 it.each([
   [0, "apple", 1, -1, 5],
@@ -80,17 +82,25 @@ it.each([
     expect(scout.cell.x).toBe(exitX);
     advance(game, 4.95, () => roll);
     expect(scout.job).toMatchObject({ phase: "away" });
-    for (let i = 0; i < 1200 && !(scout.job?.kind === "forage" && scout.job.phase === "returning"); i++)
-      stepGame(game, 0.05, () => roll);
+    for (let i = 0; i < 1200 && scout.job?.kind !== "haul"; i++) stepGame(game, 0.05, () => roll);
     expect(game.items).toContainEqual(
-      expect.objectContaining({ kind: "food", food: cargo, location: { kind: "carried", unitId: scout.id } }),
+      expect.objectContaining({
+        kind: "food",
+        food: cargo,
+        portions: food,
+        location: { kind: "carried", unitId: scout.id },
+      }),
     );
+    expect(scout.job).toMatchObject({ kind: "haul", destination: { x: 7, y: 2 }, phase: "delivery" });
     const events = [];
     for (let i = 0; i < 1000 && game.deliveries === 0; i++) events.push(...stepGame(game, 0.05, () => roll));
     expect(events).toContainEqual({ kind: "scout-delivered", scoutId: scout.id, cargo, food });
-    expect(game.food).toBe(2 + food);
+    expect(foodStock(game)).toBe(food);
     expect(game.deliveries).toBe(1);
-    expect(scout.cell).toEqual({ x: 10, y: 3 });
+    expect(scout.cell).toEqual({ x: 7, y: 2 });
+    expect(game.items.filter((item) => item.kind === "food").map((item) => item.location)).toEqual([
+      { kind: "cell", cell: { x: 7, y: 2 } },
+    ]);
   },
 );
 it("drops food and eggs immediately on combat contact, before damage, and releases reservations", () => {
@@ -98,12 +108,13 @@ it("drops food and eggs immediately on combat contact, before damage, and releas
   const worker = addUnit(game, "worker", { x: 8, y: 3 });
   const scout = addUnit(game, "scout", { x: 8, y: 3 });
   const item = egg(game, worker.cell);
+  const apple = food(game, scout.cell);
   game.items = [
     { ...item, location: { kind: "carried", unitId: worker.id } },
-    { id: game.nextItemId++, kind: "food", food: "apple", location: { kind: "carried", unitId: scout.id } },
+    { ...apple, location: { kind: "carried", unitId: scout.id } },
   ];
-  worker.job = { kind: "haul", itemId: item.id, destination: { x: 6, y: 2 }, phase: "delivery" };
-  scout.job = { kind: "forage", phase: "returning", exit: { x: -1, y: 0 }, remaining: 0 };
+  worker.job = { kind: "haul", itemId: item.id, destination: { x: 6, y: 4 }, phase: "delivery" };
+  scout.job = { kind: "haul", itemId: apple.id, destination: { x: 7, y: 2 }, phase: "delivery" };
   addUnit(game, "warrior", worker.cell, "raiders");
   stepGame(game);
   expect(game.items.map((item) => item.location)).toEqual([
@@ -111,22 +122,18 @@ it("drops food and eggs immediately on combat contact, before damage, and releas
     { kind: "cell", cell: { x: 8, y: 3 } },
   ]);
   expect([worker.job, scout.job]).toEqual([null, null]);
-  expect([worker.hp, scout.hp, game.food]).toEqual([8, 10, 2]);
+  expect([worker.hp, scout.hp, foodStock(game)]).toEqual([8, 10, 0]);
   advance(game, 1.95);
   expect(game.units).not.toContain(worker);
 });
 it("recovers dropped food through the scout auction and credits it once", () => {
   const game = world();
-  addUnit(game, "scout", { x: 8, y: 3 });
-  game.items.push({
-    id: game.nextItemId++,
-    kind: "food",
-    food: "caterpillar",
-    location: { kind: "cell", cell: { x: 8, y: 3 } },
-  });
+  const scout = addUnit(game, "scout", { x: 8, y: 3 });
+  const caterpillar = food(game, scout.cell, "caterpillar");
   const events = advance(game, 3);
-  expect(game.food).toBe(4);
+  expect(foodStock(game)).toBe(2);
   expect(game.deliveries).toBe(1);
+  expect(caterpillar.location).toEqual({ kind: "cell", cell: { x: 7, y: 2 } });
   expect(events.filter((event) => event.kind === "scout-delivered")).toHaveLength(1);
 });
 it("halts invaders at defenders and cannot cross occupied cells alive", () => {
@@ -202,11 +209,11 @@ it("stops on contact reached during movement, preserves a carried item there and
   const game = world();
   const worker = addUnit(game, "worker", { x: 8, y: 3 });
   const enemy = addUnit(game, "worker", { x: 8, y: 2 }, "raiders");
-  worker.job = { kind: "haul", itemId: 99, destination: { x: 6, y: 2 }, phase: "delivery" };
+  worker.job = { kind: "haul", itemId: 99, destination: { x: 6, y: 4 }, phase: "delivery" };
   worker.route = [
     { x: 8, y: 2 },
-    { x: 7, y: 2 },
-    { x: 6, y: 2 },
+    { x: 7, y: 4 },
+    { x: 6, y: 4 },
   ];
   worker.travel = 0.95;
   game.items.push({ id: 99, kind: "egg", location: { kind: "carried", unitId: worker.id } });
@@ -252,12 +259,15 @@ it.each([1, 17, 73])(
     let lastUnitIds = new Set(unitIds),
       lastItemIds = new Set(itemIds);
     planBuild(game, 8, 6, "corridor");
-    planBuild(game, 7, 6, "room");
+    planBuild(game, 7, 6, "nest");
+    planBuild(game, 9, 6, "storage");
     for (let tick = 0; tick < 1000; tick++) {
       if (tick % 100 === 0 && startSpawn(game, "worker", random)) balance--;
       for (const event of stepGame(game, 0.05, random)) {
         if (event.kind === "scout-delivered") balance += event.food;
-        expect(["scout-delivered", "attack-started", "attack-ended", "queen-died"]).toContain(event.kind);
+        expect(["scout-delivered", "food-discarded", "attack-started", "attack-ended", "queen-died"]).toContain(
+          event.kind,
+        );
       }
       for (const unit of game.units) {
         if (!lastUnitIds.has(unit.id)) {
@@ -278,8 +288,8 @@ it.each([1, 17, 73])(
       lastUnitIds = new Set(game.units.map((unit) => unit.id));
       lastItemIds = new Set(game.items.map((item) => item.id));
       if (tick % 20) continue;
-      expect(game.food).toBe(balance);
-      expect(game.food).toBeGreaterThanOrEqual(0);
+      expect(foodStock(game)).toBe(balance);
+      expect(foodStock(game)).toBeGreaterThanOrEqual(0);
       expect(queenOf(game)).toBeDefined();
       expect(new Set(game.units.map((unit) => unit.id)).size).toBe(game.units.length);
       expect(new Set(game.items.map((item) => item.id)).size).toBe(game.items.length);
@@ -374,9 +384,9 @@ it("allocates distinct increasing item ids when egg laying and two expeditions f
     scout.job = { kind: "forage", phase: "away", remaining: 0, exit: scout.cell };
   }
   stepGame(game, 0.05, () => 0.5);
-  expect(game.items.map((item) => item.id)).toEqual([2, 3, 4]);
-  expect(game.nextItemId).toBe(5);
-  expect(game.food).toBe(2);
+  expect(game.items.map((item) => item.id)).toEqual([4, 5, 6]);
+  expect(game.nextItemId).toBe(7);
+  expect(foodStock(game)).toBe(0);
 });
 
 it("skips a dead builder and safely advances a world without a queen", () => {

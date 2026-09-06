@@ -13,7 +13,7 @@ function rooms(game: Game, navigation: Navigation): Nest[] {
   const seen = new Set<string>();
   const nests: Nest[] = [];
   for (const [id, tile] of Object.entries(game.colony)) {
-    if (tile !== "room" || seen.has(id)) continue;
+    if (tile !== "nest" || seen.has(id)) continue;
     const { x, y } = point(id);
     const span = roomSpan(game.colony, x, y);
     const cells = Array.from({ length: span.width }, (_, i) => ({ x: span.left + i, y }));
@@ -37,7 +37,7 @@ export function nestCells(game: Game) {
   if (!queen) return [];
   const homes = [queen.cell, ...(queen.job?.kind === "nest" ? [queen.job.destination] : [])];
   return homes.flatMap((home) => {
-    if (game.colony[cellKey(home)] !== "room") return [home];
+    if (game.colony[cellKey(home)] !== "nest") return [home];
     const span = roomSpan(game.colony, home.x, home.y);
     return Array.from({ length: span.width }, (_, i) => ({ x: span.left + i, y: home.y }));
   });

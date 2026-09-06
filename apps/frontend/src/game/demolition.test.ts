@@ -21,7 +21,8 @@ describe("demolition", () => {
   });
   it("protects the entrance, queen, room interiors and corridor junctions", () => {
     const game = createGame();
-    game.colony["5,2"] = "room";
+    game.items = [];
+    game.colony["5,2"] = "storage";
     for (const [x, y] of [
       [8, 1],
       [10, 3],
@@ -37,10 +38,11 @@ describe("demolition", () => {
   });
   it("rejects room edges and corridor ends that would isolate another cell", () => {
     const game = createGame();
-    expect(demolitionError(game, 7, 2)).toBeTruthy();
-    game.colony["7,5"] = "room";
+    game.items = [];
+    expect(demolitionError(game, 7, 2)).toMatch(/отрезать/);
+    game.colony["7,5"] = "nest";
     expect(demolitionError(game, 8, 5)).toBeTruthy();
-    game.colony["6,3"] = "room";
+    game.colony["6,3"] = "nest";
     game.colony["7,3"] = "corridor";
     expect(demolitionError(game, 7, 2)).toMatch(/отрезать/);
   });
@@ -63,7 +65,7 @@ describe("demolition", () => {
   it("does not rely on an unfinished corridor loop to preserve completed-room access", () => {
     const game = createGame(() => 0.5);
     game.items = [];
-    game.colony = { "8,1": "corridor", "8,2": "corridor", "8,3": "corridor", "7,3": "room", "6,3": "room" };
+    game.colony = { "8,1": "corridor", "8,2": "corridor", "8,3": "corridor", "7,3": "nest", "6,3": "nest" };
     expect(planBuild(game, 7, 2, "corridor")).toBeNull();
     expect(planBuild(game, 6, 2, "corridor")).toBeNull();
     expect(planBuild(game, 5, 2, "corridor")).toBeNull();
@@ -88,6 +90,7 @@ describe("demolition", () => {
 
 it("protects cargo and destination reservations even on an otherwise removable room edge", () => {
   const game = createGame(() => 0.5);
+  expect(demolish(game, 6, 2)).toMatch(/еды/);
   game.items = [{ id: 1, kind: "egg", location: { kind: "cell", cell: { x: 6, y: 2 } } }];
   expect(demolish(game, 6, 2)).toMatch(/яиц/);
   game.items = [];
@@ -107,9 +110,10 @@ it("protects the whole room of the queen and the room she is moving to", () => {
   const queen = game.units[0];
   if (!queen) throw new Error("queen");
   queen.cell = { x: 8, y: 3 };
-  queen.job = { kind: "nest", destination: { x: 6, y: 2 } };
+  queen.job = { kind: "nest", destination: { x: 10, y: 3 } };
   expect(demolish(game, 8, 3)).toMatch(/матки/);
-  expect(demolish(game, 7, 2)).toMatch(/матки/);
+  expect(demolish(game, 9, 3)).toMatch(/матки/);
+  queen.job = null;
   expect(demolish(game, 10, 3)).toBeNull();
 });
 it("rejects an interior room cell even when a second corridor keeps both sides reachable", () => {
@@ -118,7 +122,7 @@ it("rejects an interior room cell even when a second corridor keeps both sides r
   game.colony["6,3"] = "corridor";
   game.colony["7,3"] = "corridor";
   expect(demolish(game, 10, 3)).toBeTruthy();
-  game.colony["5,2"] = "room";
+  game.colony["5,2"] = "storage";
   expect(demolish(game, 6, 2)).toMatch(/с края/);
 });
 it("invalidates future routes through a removed cell without moving unrelated units", () => {
@@ -158,7 +162,7 @@ it("relocates a unit partway into a demolished cell and preserves items at the s
 it("evacuates a removed room through a horizontal passage rather than across a vertical wall", () => {
   const game = createGame(() => 0.5);
   game.items = [];
-  game.colony["6,3"] = "room";
+  game.colony["6,3"] = "nest";
   game.colony["7,3"] = "corridor";
   const worker = game.units.find((unit) => unit.role === "worker");
   if (!worker) throw new Error("worker");

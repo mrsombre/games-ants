@@ -1,12 +1,13 @@
 import { expect, it } from "vitest";
 import { key } from "./cells";
+import type { Tile } from "./colony";
 import { demolish } from "./demolition";
 import { queenOf } from "./model";
 import { Navigation, position } from "./navigation";
 import { addUnit, advance, world } from "./test-support";
 import { performJob } from "./work";
 
-function dig(game: ReturnType<typeof world>, cells: readonly (readonly [number, number])[], tile: "corridor" | "room") {
+function dig(game: ReturnType<typeof world>, cells: readonly (readonly [number, number])[], tile: Tile) {
   for (const [x, y] of cells) game.colony[key(x, y)] = tile;
 }
 const shaft = [
@@ -30,7 +31,7 @@ function queen(game: ReturnType<typeof world>) {
 it("moves to the room nearest the middle depth after the first three minutes, at a quarter cell per second", () => {
   const game = world();
   dig(game, shaft, "corridor");
-  dig(game, midRoom, "room");
+  dig(game, midRoom, "nest");
   advance(game, 179.95);
   expect(queen(game).job).toBeNull();
   expect(queen(game).cell).toEqual({ x: 10, y: 3 });
@@ -58,7 +59,7 @@ it("stays put for rooms narrower than three cells or equally far from the middle
       [10, 6],
       [11, 6],
     ],
-    "room",
+    "nest",
   );
   dig(
     game,
@@ -66,19 +67,19 @@ it("stays put for rooms narrower than three cells or equally far from the middle
       [9, 5],
       [10, 5],
     ],
-    "room",
+    "nest",
   );
   advance(game, 200);
   expect(queen(game).job).toBeNull();
   expect(queen(game).cell).toEqual({ x: 10, y: 3 });
-  game.colony["11,5"] = "room";
+  game.colony["11,5"] = "nest";
   advance(game, 0.05);
   expect(queen(game).job).toEqual({ kind: "nest", destination: { x: 10, y: 5 } });
 });
-it("resumes the move after a fight interrupts it and receives food at the new seat", () => {
+it("resumes the move after a fight interrupts it while food still goes to the storage", () => {
   const game = world();
   dig(game, shaft, "corridor");
-  dig(game, midRoom, "room");
+  dig(game, midRoom, "nest");
   advance(game, 180);
   expect(queen(game).job?.kind).toBe("nest");
   game.items = [];
@@ -95,15 +96,27 @@ it("resumes the move after a fight interrupts it and receives food at the new se
   advance(game, 24);
   expect(queen(game).cell).toEqual({ x: 10, y: 5 });
   const scout = addUnit(game, "scout", { x: 8, y: 3 });
-  scout.job = { kind: "forage", phase: "returning", exit: { x: -1, y: 0 }, remaining: 0 };
-  game.items.push({ id: 99, kind: "food", food: "apple", location: { kind: "carried", unitId: scout.id } });
+  scout.job = { kind: "forage", phase: "away", exit: { x: -1, y: 0 }, remaining: 0 };
   performJob(game, scout, 0.05, new Navigation(game.colony), () => 0.5, []);
-  expect(scout.route.at(-1)).toEqual({ x: 10, y: 5 });
+  expect(scout.route.at(-1)).toEqual({ x: 7, y: 2 });
+});
+it("ignores storage rooms when choosing a seat, however wide and well placed", () => {
+  const game = world();
+  dig(game, shaft, "corridor");
+  dig(game, midRoom, "storage");
+  advance(game, 200);
+  expect(queen(game).job).toBeNull();
+  expect(queen(game).cell).toEqual({ x: 10, y: 3 });
+  game.colony["9,5"] = "nest";
+  game.colony["10,5"] = "nest";
+  game.colony["11,5"] = "nest";
+  advance(game, 0.05);
+  expect(queen(game).job).toEqual({ kind: "nest", destination: { x: 10, y: 5 } });
 });
 it("finishes a running egg cycle before leaving, lays nothing on the way and restarts the cycle at the new seat", () => {
   const game = world();
   dig(game, shaft, "corridor");
-  dig(game, midRoom, "room");
+  dig(game, midRoom, "nest");
   advance(game, 170);
   game.items = [];
   advance(game, 10);

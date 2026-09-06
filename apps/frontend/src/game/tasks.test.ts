@@ -2,21 +2,21 @@ import { expect, it } from "vitest";
 import { planBuild } from "./construction";
 import { Navigation } from "./navigation";
 import { assignTasks } from "./tasks";
-import { addUnit, egg, world } from "./test-support";
+import { addUnit, egg, food, world } from "./test-support";
 
 function auction(game: ReturnType<typeof world>, faction: "colony" | "raiders" = "colony", random = () => 0.5) {
   assignTasks(game, faction, new Navigation(game.colony), new Set(), random);
 }
 it("awards hauling by path time and stable id, independent of unit array order", () => {
   const game = world();
-  game.colony["9,2"] = "room";
+  game.colony["9,2"] = "nest";
   const wall = addUnit(game, "worker", { x: 9, y: 2 });
   const near = addUnit(game, "worker", { x: 11, y: 3 });
   const tie = addUnit(game, "worker", { x: 11, y: 3 });
   game.units.reverse();
   egg(game, { x: 9, y: 3 });
   auction(game);
-  expect(near.job).toMatchObject({ kind: "haul", destination: { x: 6, y: 2 } });
+  expect(near.job).toMatchObject({ kind: "haul", destination: { x: 6, y: 4 } });
   expect(wall.job?.kind).toBe("wander");
   expect(tie.job?.kind).toBe("wander");
 });
@@ -41,7 +41,7 @@ it("reserves each item and destination once across repeated faction auctions", (
   auction(game);
   expect(game.units.flatMap((unit) => (unit.job?.kind === "haul" ? [unit.job] : []))).toEqual(jobs);
   expect(new Set(jobs.map((job) => job.itemId)).size).toBe(2);
-  expect(new Set(jobs.map((job) => `${job.destination.x},${job.destination.y}`))).toEqual(new Set(["6,2", "7,2"]));
+  expect(new Set(jobs.map((job) => `${job.destination.x},${job.destination.y}`))).toEqual(new Set(["6,4", "7,4"]));
   const thief = addUnit(game, "worker", { x: 8, y: 3 }, "raiders");
   auction(game, "raiders");
   expect(thief.job?.kind).toBe("attack");
@@ -62,7 +62,7 @@ it("skips unreachable work and eggs reserved for hatching", () => {
   const worker = addUnit(game);
   const item = egg(game, { x: 9, y: 3 });
   game.spawns = [{ eggId: item.id, role: "worker", progress: 0 }];
-  game.blueprints["0,10"] = { tile: "room", progress: 0, workers: 0 };
+  game.blueprints["0,10"] = { tile: "nest", progress: 0, workers: 0 };
   auction(game);
   expect(worker.job?.kind).toBe("wander");
 });
@@ -112,32 +112,32 @@ it("reserves food for scouts and eggs for workers before execution, with food re
   const worker = addUnit(game, "worker", { x: 9, y: 3 });
   const scout = addUnit(game, "scout", { x: 11, y: 3 });
   const item = egg(game, { x: 11, y: 3 });
-  game.items.push({ id: 100, kind: "food", food: "apple", location: { kind: "cell", cell: { x: 9, y: 3 } } });
+  const apple = food(game, { x: 9, y: 3 });
   auction(game);
   expect(worker.job).toMatchObject({ kind: "haul", itemId: item.id });
-  expect(scout.job).toMatchObject({ kind: "haul", itemId: 100, destination: { x: 10, y: 3 } });
+  expect(scout.job).toMatchObject({ kind: "haul", itemId: apple.id, destination: { x: 7, y: 2 } });
 });
 it("awards build sites only through horizontal room passages or corridor-to-corridor links", () => {
   const game = world();
-  const worker = addUnit(game, "worker", { x: 6, y: 2 });
+  const worker = addUnit(game, "worker", { x: 6, y: 4 });
   game.colony["7,3"] = "corridor";
   game.blueprints["6,3"] = { tile: "corridor", progress: 0, workers: 0 };
   auction(game);
   expect(worker.job).toEqual({ kind: "build", target: "6,3", stand: { x: 7, y: 3 } });
   worker.job = null;
   worker.route = [];
-  game.blueprints = { "7,4": { tile: "room", progress: 0, workers: 0 } };
+  game.blueprints = { "7,5": { tile: "nest", progress: 0, workers: 0 } };
   auction(game);
-  expect(worker.job).toEqual({ kind: "build", target: "7,4", stand: { x: 8, y: 4 } });
+  expect(worker.job).toEqual({ kind: "build", target: "7,5", stand: { x: 8, y: 5 } });
   worker.job = null;
   worker.route = [];
-  game.blueprints = { "5,2": { tile: "corridor", progress: 0, workers: 0 } };
+  game.blueprints = { "5,4": { tile: "corridor", progress: 0, workers: 0 } };
   auction(game);
-  expect(worker.job).toEqual({ kind: "build", target: "5,2", stand: { x: 6, y: 2 } });
+  expect(worker.job).toEqual({ kind: "build", target: "5,4", stand: { x: 6, y: 4 } });
 });
 it("keeps raider loot delivery outside the map and does not send a healthy colony scout to patrol", () => {
   const game = world();
-  const thief = addUnit(game, "worker", { x: 6, y: 2 }, "raiders");
+  const thief = addUnit(game, "worker", { x: 6, y: 4 }, "raiders");
   const scout = addUnit(game, "scout");
   egg(game, thief.cell);
   auction(game, "raiders");
@@ -157,7 +157,7 @@ it("gives free workers construction priority over eggs and scouts interception p
   expect(worker.job?.kind).toBe("build");
   const scout = addUnit(game, "scout", { x: 8, y: 3 });
   addUnit(game, "warrior", { x: 1, y: 0 }, "raiders");
-  game.items.push({ id: 100, kind: "food", food: "apple", location: { kind: "cell", cell: scout.cell } });
+  food(game, scout.cell);
   auction(game);
   expect(scout.job?.kind).toBe("attack");
 });
@@ -179,13 +179,13 @@ it("assigns a newly available egg and room while other carriers retain their ind
   egg(game, { x: 9, y: 3 });
   egg(game, { x: 11, y: 3 });
   auction(game);
-  game.colony["5,2"] = "room";
+  game.colony["5,4"] = "nest";
   const extra = egg(game, { x: 8, y: 3 });
   auction(game);
   expect(game.units.flatMap((unit) => (unit.job?.kind === "haul" ? [unit.job] : []))).toContainEqual({
     kind: "haul",
     itemId: extra.id,
-    destination: { x: 5, y: 2 },
+    destination: { x: 5, y: 4 },
     phase: "pickup",
   });
 });
@@ -218,38 +218,64 @@ it.each([0, 0.85, 0.999])(
     expect(worker.route.length).toBeGreaterThan(0);
     expect(worker.route.at(-1)?.y).toBeGreaterThan(0);
     if (roll === 0) expect(worker.route.at(-1)).toEqual({ x: 8, y: 1 });
-    if (roll === 0.999) expect(worker.route.at(-1)).toEqual({ x: 11, y: 3 });
+    if (roll === 0.999) expect(worker.route.at(-1)).toEqual({ x: 7, y: 4 });
   },
 );
 
 it("builds a horizontal room extension from a room but requires a corridor for vertical access", () => {
   const game = world();
-  const worker = addUnit(game, "worker", { x: 6, y: 2 });
-  game.blueprints["5,2"] = { tile: "room", progress: 0, workers: 0 };
+  const worker = addUnit(game, "worker", { x: 6, y: 4 });
+  game.blueprints["5,4"] = { tile: "nest", progress: 0, workers: 0 };
   auction(game);
-  expect(worker.job).toEqual({ kind: "build", target: "5,2", stand: { x: 6, y: 2 } });
+  expect(worker.job).toEqual({ kind: "build", target: "5,4", stand: { x: 6, y: 4 } });
   worker.job = null;
   game.colony["7,3"] = "corridor";
-  game.blueprints = { "6,3": { tile: "room", progress: 0, workers: 0 } };
+  game.blueprints = { "6,3": { tile: "nest", progress: 0, workers: 0 } };
   auction(game);
   expect(worker.job).toEqual({ kind: "build", target: "6,3", stand: { x: 7, y: 3 } });
 });
-it("allows concurrent food deliveries into home, including food dropped in a storage room", () => {
+it("sends concurrent food deliveries to different storage cells, nearest first", () => {
   const game = world();
-  const first = addUnit(game, "scout", { x: 6, y: 2 });
-  const second = addUnit(game, "scout", { x: 7, y: 2 });
-  for (const scout of [first, second])
-    game.items.push({
-      id: game.nextItemId++,
-      kind: "food",
-      food: "apple",
-      location: { kind: "cell", cell: scout.cell },
-    });
+  const first = addUnit(game, "scout", { x: 9, y: 3 });
+  const second = addUnit(game, "scout", { x: 11, y: 3 });
+  const [near, far] = [first, second].map((scout) => food(game, scout.cell));
   auction(game);
   expect([first.job, second.job]).toEqual([
-    { kind: "haul", itemId: 2, destination: { x: 10, y: 3 }, phase: "pickup" },
-    { kind: "haul", itemId: 3, destination: { x: 10, y: 3 }, phase: "pickup" },
+    { kind: "haul", itemId: near?.id, destination: { x: 7, y: 2 }, phase: "pickup" },
+    { kind: "haul", itemId: far?.id, destination: { x: 6, y: 2 }, phase: "pickup" },
   ]);
+});
+it("offers expeditions only while a storage slot is free, counting reserved deliveries", () => {
+  const game = world();
+  const scout = addUnit(game, "scout", { x: 8, y: 3 });
+  for (let i = 0; i < 3; i++) food(game, { x: 6, y: 2 });
+  food(game, { x: 7, y: 2 });
+  food(game, { x: 7, y: 2 });
+  const carrier = addUnit(game, "scout", { x: 8, y: 2 });
+  const carried = food(game, carrier.cell);
+  carried.location = { kind: "carried", unitId: carrier.id };
+  carrier.job = { kind: "haul", itemId: carried.id, destination: { x: 7, y: 2 }, phase: "delivery" };
+  auction(game);
+  expect(scout.job?.kind).toBe("wander");
+  carrier.hp = 0;
+  auction(game);
+  expect(scout.job?.kind).toBe("forage");
+});
+it("hauls food out of a nest into a storage but leaves stored food and takes stray eggs back to a nest", () => {
+  const game = world();
+  const scout = addUnit(game, "scout", { x: 8, y: 3 });
+  const stray = food(game, { x: 9, y: 3 });
+  auction(game);
+  expect(scout.job).toMatchObject({ kind: "haul", itemId: stray.id, destination: { x: 7, y: 2 } });
+  scout.job = null;
+  scout.route = [];
+  stray.location = { kind: "cell", cell: { x: 7, y: 2 } };
+  auction(game);
+  expect(scout.job).toMatchObject({ kind: "forage" });
+  const worker = addUnit(game, "worker", { x: 6, y: 2 });
+  const lost = egg(game, worker.cell);
+  auction(game);
+  expect(worker.job).toMatchObject({ kind: "haul", itemId: lost.id, destination: { x: 6, y: 4 } });
 });
 it("reserves only the egg being hatched and assigns other eggs to mobile workers", () => {
   const game = world();
@@ -292,13 +318,11 @@ it("resolves equal pickup-plus-delivery costs by target key for one worker", () 
   egg(game, { x: 9, y: 3 });
   const right = egg(game, { x: 11, y: 3 });
   auction(game);
-  expect(worker.job).toEqual({ kind: "haul", itemId: right.id, destination: { x: 6, y: 2 }, phase: "pickup" });
+  expect(worker.job).toEqual({ kind: "haul", itemId: right.id, destination: { x: 6, y: 4 }, phase: "pickup" });
 });
 it("lets a worker build a corridor sideways from the room it stands in", () => {
   const game = world();
-  game.colony["6,3"] = "room";
-  game.colony["6,4"] = "corridor";
-  game.colony["7,4"] = "corridor";
+  game.colony["6,3"] = "nest";
   const worker = addUnit(game, "worker", { x: 6, y: 3 });
   expect(planBuild(game, 7, 3, "corridor")).toBeNull();
   auction(game);
@@ -307,7 +331,7 @@ it("lets a worker build a corridor sideways from the room it stands in", () => {
 it("keeps a raider waiting for an unreachable opponent instead of leaving or starting colony patrol", () => {
   const game = world();
   game.units = [];
-  game.colony["1,9"] = "room";
+  game.colony["1,9"] = "nest";
   addUnit(game, "worker", { x: 1, y: 9 });
   const raider = addUnit(game, "warrior", { x: 0, y: 0 }, "raiders");
   auction(game, "raiders");

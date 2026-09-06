@@ -1,7 +1,8 @@
-import { point, sameCell } from "./cells";
-import { carriedItem, dropCargo, foodValue, pickUp } from "./items";
-import { EPSILON, type Game, type GameEvent, homeOf } from "./model";
+import { type Cell, cellKey, point, sameCell } from "./cells";
+import { dropCargo, type FoodKind, foodValue, pickUp } from "./items";
+import { EPSILON, type Game, type GameEvent } from "./model";
 import { type Navigation, setRoute } from "./navigation";
+import { foodStorageCells, freeSlots } from "./storage";
 import { jobValid, WANDER_MAX_SECONDS, WANDER_MIN_SECONDS } from "./tasks";
 import type { Unit } from "./units";
 
@@ -29,14 +30,25 @@ export function prepareJobs(game: Game, seconds: number, navigation: Navigation)
     }
   }
 }
-function depositFood(game: Game, unit: Unit, events: GameEvent[]) {
-  const item = carriedItem(game, unit);
-  if (item?.kind !== "food") return;
-  const food = foodValue[item.food];
-  game.food += food;
+function discardFood(game: Game, unit: Unit, cargo: FoodKind, events: GameEvent[]) {
+  game.items = game.items.filter((item) => item.location.kind !== "carried" || item.location.unitId !== unit.id);
+  unit.job = null;
+  events.push({ kind: "food-discarded", scoutId: unit.id, cargo });
+}
+function storeFood(game: Game, unit: Unit, cargo: FoodKind, events: GameEvent[]) {
+  if (freeSlots(game, cellKey(unit.cell), unit.id) <= 0) return discardFood(game, unit, cargo, events);
+  dropCargo(game, unit);
   game.deliveries++;
-  game.items = game.items.filter((entry) => entry.id !== item.id);
-  events.push({ kind: "scout-delivered", scoutId: unit.id, cargo: item.food, food });
+  unit.job = null;
+  events.push({ kind: "scout-delivered", scoutId: unit.id, cargo, food: foodValue[cargo] });
+}
+function nearestStorage(game: Game, unit: Unit, navigation: Navigation) {
+  let best: { cell: Cell; route: Cell[] } | undefined;
+  for (const cell of foodStorageCells(game)) {
+    const route = navigation.from(unit, cell);
+    if (route && (!best || route.length < best.route.length)) best = { cell, route };
+  }
+  return best;
 }
 export function performJob(
   game: Game,
@@ -70,39 +82,36 @@ export function performJob(
         if (unit.faction === "raiders") {
           game.items = game.items.filter((entry) => entry.id !== item.id);
           game.units = game.units.filter((entry) => entry.id !== unit.id);
-        } else if (item.kind === "food") depositFood(game, unit, events);
+        } else if (item.kind === "food") return storeFood(game, unit, item.food, events);
         else dropCargo(game, unit);
         unit.job = null;
       }
       return;
     }
-    case "forage":
+    case "forage": {
       if (job.phase === "outbound") {
         job.phase = "away";
         job.remaining = 5 + random() * 55;
-      } else if (job.phase === "away") {
-        job.remaining = Math.max(0, job.remaining - seconds);
-        if (job.remaining > EPSILON) return;
-        const route = navigation.from(unit, homeOf(game));
-        if (!route) return;
-        const roll = random();
-        game.items.push({
-          id: game.nextItemId++,
-          kind: "food",
-          food: roll < 0.4 ? "apple" : roll < 0.8 ? "mushroom" : "caterpillar",
-          location: { kind: "carried", unitId: unit.id },
-        });
-        job.phase = "returning";
-        setRoute(unit, route);
-      } else if (sameCell(unit.cell, homeOf(game))) {
-        depositFood(game, unit, events);
-        unit.job = null;
-      } else {
-        const route = navigation.from(unit, homeOf(game));
-        if (route) setRoute(unit, route);
-        else interruptJob(game, unit);
+        return;
       }
+      job.remaining = Math.max(0, job.remaining - seconds);
+      if (job.remaining > EPSILON) return;
+      const roll = random();
+      const cargo: FoodKind = roll < 0.4 ? "apple" : roll < 0.8 ? "mushroom" : "caterpillar";
+      const id = game.nextItemId++;
+      game.items.push({
+        id,
+        kind: "food",
+        food: cargo,
+        portions: foodValue[cargo],
+        location: { kind: "carried", unitId: unit.id },
+      });
+      const storage = nearestStorage(game, unit, navigation);
+      if (!storage) return discardFood(game, unit, cargo, events);
+      unit.job = { kind: "haul", itemId: id, destination: storage.cell, phase: "delivery" };
+      setRoute(unit, storage.route);
       return;
+    }
     case "wander":
       unit.job = null;
       unit.idleWait = WANDER_MIN_SECONDS + random() * (WANDER_MAX_SECONDS - WANDER_MIN_SECONDS);

@@ -1,6 +1,7 @@
 import { queenOf } from "./game/model";
 import { roles } from "./game/rendering/appearance";
 import { spawnableEggs } from "./game/spawning";
+import { foodStock } from "./game/storage";
 import type { HatchRole } from "./game/units";
 import { CommandPanel } from "./ui/command-panel";
 import { AntHead, FoodIcon } from "./ui/icons";
@@ -8,7 +9,7 @@ import { useGame } from "./ui/use-game";
 
 export function App() {
   const { host, game, tool, setTool, message, tip, error, ready, landscapeName, spawnAnt } = useGame();
-  const { food } = game;
+  const food = foodStock(game);
   const ants = game.units.filter((unit) => unit.faction === "colony" && unit.role !== "queen");
   const enemies = game.units.filter((unit) => unit.faction === "raiders");
   const scoutsAway = ants.filter((ant) => ant.job?.kind === "forage" && ant.job.phase === "away");

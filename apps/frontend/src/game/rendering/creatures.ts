@@ -1,11 +1,12 @@
 import { Container, Graphics } from "pixi.js";
-import { point } from "../cells";
+import { cellKey, point } from "../cells";
 import { EGG_SECONDS } from "../eggs";
-import type { FoodKind } from "../items";
+import { type FoodKind, foodValue } from "../items";
 import { type Game, queenOf } from "../model";
 import { position } from "../navigation";
 import { present, type Unit } from "../units";
 import { roles } from "./appearance";
+import { foodSlotX } from "./colony";
 import { CELL, SURFACE } from "./layout";
 import { drawCrown, drawQueen } from "./queen";
 
@@ -65,15 +66,21 @@ export function createCreatures() {
 }
 function drawEggs(g: Graphics, game: Game) {
   g.clear();
-  for (const egg of game.items) {
+  const slots = new Map<string, number>();
+  for (const egg of [...game.items].sort((a, b) => a.id - b.id)) {
     if (egg.location.kind !== "cell") continue;
     const p = egg.location.cell;
     const x = (p.x + 0.5) * CELL;
     const y = SURFACE + (p.y + 0.5) * CELL;
     if (egg.kind === "food") {
+      const id = cellKey(p);
+      const slot = slots.get(id) ?? 0;
+      slots.set(id, slot + 1);
+      const fx = p.x * CELL + foodSlotX(slot);
       const color = egg.food === "mushroom" ? 0xc77852 : 0x8eae4e;
-      g.ellipse(x, y, egg.food === "caterpillar" ? 13 : 8, 6).fill(color);
-      g.circle(x - 3, y - 2, 2).fill(0xd8e6a3);
+      const length = egg.food === "caterpillar" ? (8 * egg.portions) / foodValue.caterpillar : 6;
+      g.ellipse(fx, y, length, 5).fill(color);
+      g.circle(fx - 2, y - 2, 1.6).fill(0xd8e6a3);
       continue;
     }
     g.ellipse(x, y + 7, 13, 4).fill({ color: 0x483921, alpha: 0.2 });

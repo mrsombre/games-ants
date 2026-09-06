@@ -1,10 +1,11 @@
 import { type Cell, COLS, cellKey, ENTRANCE, neighbors, point, sameCell } from "./cells";
 import { connected } from "./colony";
-import { nurseryCells, storageCells } from "./eggs";
+import { eggStorageCells, nurseryCells } from "./eggs";
 import { canCarry, itemReserved } from "./items";
 import type { Job } from "./jobs";
 import { type Game, homeOf } from "./model";
 import { type Navigation, setRoute } from "./navigation";
+import { foodStorageCells, storageCapacity } from "./storage";
 import { type Faction, present, traits, type Unit } from "./units";
 
 export const WANDER_MIN_SECONDS = 5;
@@ -36,34 +37,39 @@ function availableOffers(game: Game, faction: Faction, navigation: Navigation, r
         }
       }
     }
-    const exit = { x: random() < 0.5 ? -1 : COLS, y: 0 };
-    offers.push(offer({ kind: "forage", phase: "outbound", exit, remaining: 0 }, exit, 80));
+    if (storageCapacity(game) > 0) {
+      const exit = { x: random() < 0.5 ? -1 : COLS, y: 0 };
+      offers.push(offer({ kind: "forage", phase: "outbound", exit, remaining: 0 }, exit, 80));
+    }
   } else if (!enemies.length) {
     offers.push(offer({ kind: "leave", destination: { x: -1, y: 0 } }, { x: -1, y: 0 }, 10));
   }
   const nursery = nurseryCells(game);
-  const storage = faction === "colony" ? storageCells(game, navigation) : [];
+  const eggStorage = faction === "colony" ? eggStorageCells(game, navigation) : [];
+  const foodStorage = faction === "colony" ? foodStorageCells(game).map((cell) => ({ cell, distance: 0 })) : [];
   for (const item of game.items) {
     if (item.location.kind !== "cell" || itemReserved(game, item.id)) continue;
     if (faction === "colony" && game.spawns.some((spawn) => spawn.eggId === item.id)) continue;
     const source = item.location.cell;
+    const tile = game.colony[cellKey(source)];
     if (
       faction === "colony" &&
       item.kind === "egg" &&
-      game.colony[cellKey(source)] === "room" &&
+      tile === "nest" &&
       !nursery.some((cell) => sameCell(cell, source))
     )
       continue;
+    if (faction === "colony" && item.kind === "food" && tile === "storage") continue;
     const destinations =
       faction === "raiders"
         ? [{ cell: { x: -1, y: 0 }, distance: 0 }]
         : item.kind === "food"
-          ? [{ cell: homeOf(game), distance: 0 }]
-          : storage;
+          ? foodStorage
+          : eggStorage;
     for (const { cell, distance } of destinations) {
       if (!navigation.route(source, cell)) continue;
       const locks = [`item:${item.id}`];
-      if (faction === "colony" && item.kind === "egg") locks.push(`cell:${cellKey(cell)}`);
+      if (faction === "colony") locks.push(`cell:${cellKey(cell)}`);
       offers.push(
         offer(
           { kind: "haul", itemId: item.id, destination: cell, phase: "pickup" },
@@ -174,6 +180,6 @@ export function jobValid(game: Game, unit: Unit) {
     case "wander":
       return job.destination.y === 0 || !!game.colony[cellKey(job.destination)];
     case "nest":
-      return game.colony[cellKey(job.destination)] === "room";
+      return game.colony[cellKey(job.destination)] === "nest";
   }
 }

@@ -1,6 +1,7 @@
 import { type Cell, cellKey } from "./cells";
 import { type Item, itemReserved } from "./items";
 import { EPSILON, type Game } from "./model";
+import { consumeFood } from "./storage";
 import { createUnit, type HatchRole, hatchCost } from "./units";
 
 export type Spawn = { eggId: number; role: HatchRole; progress: number };
@@ -11,17 +12,15 @@ export function spawnableEggs(game: Game) {
     (item): item is Item & { kind: "egg"; location: { kind: "cell"; cell: Cell } } =>
       item.kind === "egg" &&
       item.location.kind === "cell" &&
-      game.colony[cellKey(item.location.cell)] === "room" &&
+      game.colony[cellKey(item.location.cell)] === "nest" &&
       !itemReserved(game, item.id) &&
       !reserved.has(item.id),
   );
 }
 export function startSpawn(game: Game, role: HatchRole, random: () => number = Math.random) {
-  if (game.food < hatchCost[role]) return false;
   const eggs = spawnableEggs(game);
   const egg = eggs[Math.floor(random() * eggs.length)];
-  if (!egg) return false;
-  game.food -= hatchCost[role];
+  if (!egg || !consumeFood(game, hatchCost[role])) return false;
   game.spawns.push({ eggId: egg.id, role, progress: 0 });
   return true;
 }

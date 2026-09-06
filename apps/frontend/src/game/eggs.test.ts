@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { advanceEggs, nurseryCells, storageCells } from "./eggs";
+import { advanceEggs, eggStorageCells, nurseryCells } from "./eggs";
 import { queenOf } from "./model";
 import { Navigation } from "./navigation";
 import { addUnit, advance, egg, world } from "./test-support";
@@ -12,7 +12,7 @@ it("lays every thirty seconds, pauses with both nursery cells occupied and prese
   advance(game, 60);
   expect(game.eggTimer).toBeCloseTo(12, 8);
   expect(game.items).toHaveLength(2);
-  first.location.cell = { x: 6, y: 2 };
+  first.location.cell = { x: 6, y: 4 };
   advance(game, 17.95);
   expect(game.items).toHaveLength(2);
   advance(game, 0.05);
@@ -25,7 +25,7 @@ it("requires a living queen and completed nursery rooms, including delivery rese
   const worker = addUnit(game);
   worker.job = { kind: "haul", itemId: 99, destination: { x: 9, y: 3 }, phase: "delivery" };
   delete game.colony["11,3"];
-  game.blueprints["11,3"] = { tile: "room", workers: 0, progress: 0 };
+  game.blueprints["11,3"] = { tile: "nest", workers: 0, progress: 0 };
   advanceEggs(game, 30);
   expect(game.items).toEqual([]);
   expect(game.eggTimer).toBe(0);
@@ -43,18 +43,18 @@ it("carries clutches visibly to remote storage, fills rooms and recovers a dropp
   for (let i = 0; i < 100 && item.location.kind === "cell"; i++) advance(game, 0.05);
   expect(item.location).toHaveProperty("unitId");
   advance(game, 5);
-  expect(item.location).toEqual({ kind: "cell", cell: { x: 6, y: 2 } });
+  expect(item.location).toEqual({ kind: "cell", cell: { x: 6, y: 4 } });
   const dropped = egg(game, { x: 8, y: 4 });
   advance(game, 10);
-  expect(dropped.location).toEqual({ kind: "cell", cell: { x: 7, y: 2 } });
+  expect(dropped.location).toEqual({ kind: "cell", cell: { x: 7, y: 4 } });
   advance(game, 100);
   expect(game.items.filter((item) => item.kind === "egg")).toHaveLength(4);
 });
 
 it("keeps eggs beside the queen when no remote storage exists and ignores vertical rooms for laying", () => {
   const game = world();
-  delete game.colony["6,2"];
-  delete game.colony["7,2"];
+  delete game.colony["6,4"];
+  delete game.colony["7,4"];
   const worker = addUnit(game);
   const item = egg(game, { x: 9, y: 3 });
   advance(game, 5);
@@ -62,7 +62,7 @@ it("keeps eggs beside the queen when no remote storage exists and ignores vertic
   expect(worker.job?.kind).not.toBe("haul");
   egg(game, { x: 11, y: 3 });
   game.colony["9,4"] = "corridor";
-  game.colony["10,4"] = "room";
+  game.colony["10,4"] = "nest";
   advanceEggs(game, 30);
   expect(game.items).toHaveLength(2);
   expect(game.eggTimer).toBeCloseTo(5, 8);
@@ -70,7 +70,7 @@ it("keeps eggs beside the queen when no remote storage exists and ignores vertic
 
 it("finds only the colony queen and safely handles her absence", () => {
   const game = world();
-  const enemyQueen = addUnit(game, "queen", { x: 6, y: 2 }, "raiders");
+  const enemyQueen = addUnit(game, "queen", { x: 6, y: 4 }, "raiders");
   game.units.reverse();
   expect(queenOf(game)?.id).toBe(0);
   game.units = [enemyQueen];
@@ -78,7 +78,7 @@ it("finds only the colony queen and safely handles her absence", () => {
   expect(game.items).toEqual([]);
   expect(queenOf(game)).toBeUndefined();
   expect(nurseryCells(game)).toEqual([]);
-  expect(storageCells(game, new Navigation(game.colony))).toEqual([]);
+  expect(eggStorageCells(game, new Navigation(game.colony))).toEqual([]);
 });
 
 it("preserves excess laying time and excludes disconnected rooms from storage", () => {
@@ -87,9 +87,23 @@ it("preserves excess laying time and excludes disconnected rooms from storage", 
   advanceEggs(game, 0.03);
   expect(game.items).toHaveLength(1);
   expect(game.eggTimer).toBeCloseTo(0.02, 8);
-  game.colony["0,9"] = "room";
-  expect(storageCells(game, new Navigation(game.colony)).map(({ cell }) => cell)).toEqual([
-    { x: 6, y: 2 },
-    { x: 7, y: 2 },
+  game.colony["0,9"] = "nest";
+  expect(eggStorageCells(game, new Navigation(game.colony)).map(({ cell }) => cell)).toEqual([
+    { x: 6, y: 4 },
+    { x: 7, y: 4 },
   ]);
+});
+
+it("lays only from a nest and never counts storage cells as nursery or egg storage", () => {
+  const game = world();
+  const queen = queenOf(game);
+  if (!queen) throw new Error("queen");
+  queen.cell = { x: 7, y: 2 };
+  advanceEggs(game, 30);
+  expect(game.items).toEqual([]);
+  expect(nurseryCells(game)).toEqual([]);
+  game.colony["5,2"] = "corridor";
+  game.colony["4,2"] = "nest";
+  expect(nurseryCells(game)).toEqual([]);
+  expect(eggStorageCells(game, new Navigation(game.colony)).map(({ cell }) => cell)).not.toContainEqual({ x: 6, y: 2 });
 });

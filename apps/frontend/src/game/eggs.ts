@@ -12,7 +12,7 @@ export function roomCellOccupied(game: Game, id: string) {
 export function nurseryCells(game: Game) {
   const queen = queenOf(game);
   return queen
-    ? neighbors(queen.cell).filter((cell) => cell.y === queen.cell.y && game.colony[cellKey(cell)] === "room")
+    ? neighbors(queen.cell).filter((cell) => cell.y === queen.cell.y && game.colony[cellKey(cell)] === "nest")
     : [];
 }
 function freeNursery(game: Game) {
@@ -20,7 +20,7 @@ function freeNursery(game: Game) {
 }
 export function settled(game: Game) {
   const queen = queenOf(game);
-  return !!queen && queen.hp > 0 && !queen.job && !queen.route.length && game.colony[cellKey(queen.cell)] === "room";
+  return !!queen && queen.hp > 0 && !queen.job && !queen.route.length && game.colony[cellKey(queen.cell)] === "nest";
 }
 export function layingInProgress(game: Game) {
   return game.eggTimer > EPSILON && settled(game) && freeNursery(game).length > 0;
@@ -37,14 +37,14 @@ export function advanceEggs(game: Game, seconds: number) {
   }
   game.eggTimer = Math.min(game.eggTimer, EGG_SECONDS);
 }
-export function storageCells(game: Game, navigation: Navigation) {
+export function eggStorageCells(game: Game, navigation: Navigation) {
   const queen = queenOf(game);
   if (!queen) return [];
   const nursery = nurseryCells(game);
   return Object.entries(game.colony).flatMap(([id, tile]) => {
     const cell = point(id);
     if (
-      tile !== "room" ||
+      tile !== "nest" ||
       sameCell(cell, queen.cell) ||
       nursery.some((other) => sameCell(cell, other)) ||
       roomCellOccupied(game, id)

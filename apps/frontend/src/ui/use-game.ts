@@ -8,6 +8,7 @@ import { roles } from "../game/rendering/appearance";
 import { createScene } from "../game/scene";
 import { createGame, stepGame } from "../game/simulation";
 import { startSpawn } from "../game/spawning";
+import { foodStock } from "../game/storage";
 import { type HatchRole, hatchCost } from "../game/units";
 import { GAMEPLAY_TIP_INTERVAL, gameplayTips } from "./gameplay-tips";
 
@@ -57,6 +58,8 @@ export function useGame() {
               if (event.kind === "attack-ended") setMessage("Набег окончен. Муравьи возвращаются к делам.");
               if (event.kind === "queen-died") setMessage("Королева погибла. Новых яиц больше не будет.");
               if (event.kind === "scout-delivered") setMessage(scoutDeliveryMessage(event.cargo));
+              if (event.kind === "food-discarded")
+                setMessage(`Склад полон — разведчик выбросил ${foodLabel[event.cargo]}. Построй склад.`);
             }
             accumulator -= SIMULATION_STEP;
             uiTime += SIMULATION_STEP;
@@ -91,7 +94,7 @@ export function useGame() {
     setMessage(
       started
         ? `${roles[role].label}: яйцо выбрано, вылупление через 10 секунд`
-        : game.food < hatchCost[role]
+        : foodStock(game) < hatchCost[role]
           ? "Не хватает еды — дождись разведчика"
           : "Нет свободной кладки — дождись яйца или завершения переноса",
     );
@@ -100,12 +103,12 @@ export function useGame() {
   return { host, game, tool, setTool, message, tip: gameplayTips[tipIndex], error, ready, landscapeName, spawnAnt };
 }
 
+const foodLabel: Record<FoodKind, string> = {
+  apple: "зелёное яблоко",
+  mushroom: "грибочек",
+  caterpillar: "гусеницу",
+};
 function scoutDeliveryMessage(cargo: FoodKind) {
-  const labels: Record<FoodKind, string> = {
-    apple: "зелёное яблоко",
-    mushroom: "грибочек",
-    caterpillar: "гусеницу",
-  };
   const food = foodValue[cargo];
-  return `Разведчик принёс ${labels[cargo]} · +${food} ${food === 1 ? "еда" : "еды"}`;
+  return `Разведчик принёс ${foodLabel[cargo]} на склад · +${food} ${food === 1 ? "еда" : "еды"}`;
 }

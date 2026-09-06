@@ -1,6 +1,7 @@
-import type { Tool } from "../game/colony";
+import type { BuildTool, Tool } from "../game/colony";
 import { buildSeconds } from "../game/construction";
 import { roles } from "../game/rendering/appearance";
+import { STORAGE_SLOTS } from "../game/storage";
 import { type HatchRole, hatchCost } from "../game/units";
 import { AntHead, FoodIcon } from "./icons";
 
@@ -11,6 +12,57 @@ type Props = {
   hasEggSource: boolean;
   spawnAnt: (role: HatchRole) => void;
 };
+const tools: Record<Tool, { label: string; title: string; description: string }> = {
+  corridor: {
+    label: "Коридор",
+    title: "Коридор — продолжить проход",
+    description: "Продолжай от коридора или начни сбоку от комнаты. Только коридоры ведут вниз.",
+  },
+  nest: {
+    label: "Гнездо",
+    title: "Гнездо — комната для яиц, до ×4",
+    description: "Строй сбоку от коридора, расширяй до ×4. Здесь матка откладывает яйца, а рабочие хранят кладки.",
+  },
+  storage: {
+    label: "Склад",
+    title: `Склад — ${STORAGE_SLOTS} места для еды в каждой клетке, до ×4`,
+    description: `Строй сбоку от коридора, расширяй до ×4. Каждая клетка хранит ${STORAGE_SLOTS} запаса еды.`,
+  },
+  demolish: {
+    label: "Сломать",
+    title: "Сломать край комнаты, коридора или чертежа",
+    description: "Убирай крайние клетки, сохраняя комнаты и проходы.",
+  },
+};
+function ToolIcon({ tool }: { tool: BuildTool }) {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true">
+      <rect x="3" y="3" width="42" height="42" rx="4" fill="#4a3c2e" />
+      {tool === "corridor" ? (
+        <>
+          <path d="M19 4h10v15h15v10H29v15H19V29H4V19h15Z" fill="currentColor" />
+          <path d="M22 5v17H5m38 4H26v17" fill="none" stroke="#fff3bd" strokeOpacity=".3" strokeWidth="2" />
+        </>
+      ) : (
+        <>
+          <rect x="7" y="12" width="34" height="25" rx="4" fill="currentColor" />
+          <path d="M3 22h5v8H3" fill="currentColor" />
+          {tool === "nest" ? (
+            <path d="M17 30a3 4 0 1 0 0-.1M24 28a3 4 0 1 0 0-.1M31 30a3 4 0 1 0 0-.1" fill="#fff3bd" fillOpacity=".7" />
+          ) : (
+            <path
+              d="M11 33h26M15 21h6v8h-6zM21 21h6v8h-6zM27 21h6v8h-6z"
+              fill="none"
+              stroke="#fff3bd"
+              strokeOpacity=".6"
+              strokeWidth="2"
+            />
+          )}
+        </>
+      )}
+    </svg>
+  );
+}
 export function CommandPanel({ tool, setTool, food, hasEggSource, spawnAnt }: Props) {
   return (
     <section className="command-panel" aria-label="Строительство">
@@ -24,46 +76,24 @@ export function CommandPanel({ tool, setTool, food, hasEggSource, spawnAnt }: Pr
             СТРОИТЬ
           </span>
           <fieldset className="command-buttons" aria-label="Выбор постройки">
-            <button
-              type="button"
-              className={`command-button ${tool === "corridor" ? "selected" : ""}`}
-              aria-pressed={tool === "corridor"}
-              title="Коридор — продолжить проход"
-              onClick={() => setTool("corridor")}
-            >
-              <svg viewBox="0 0 48 48" aria-hidden="true">
-                <rect x="3" y="3" width="42" height="42" rx="4" fill="#4a3c2e" />
-                <path d="M19 4h10v15h15v10H29v15H19V29H4V19h15Z" fill="currentColor" />
-                <path d="M22 5v17H5m38 4H26v17" fill="none" stroke="#fff3bd" strokeOpacity=".3" strokeWidth="2" />
-              </svg>
-              <span>Коридор</span>
-            </button>
-            <button
-              type="button"
-              className={`command-button ${tool === "room" ? "selected" : ""}`}
-              aria-pressed={tool === "room"}
-              title="Комната — расширение по горизонтали до ×4"
-              onClick={() => setTool("room")}
-            >
-              <svg viewBox="0 0 48 48" aria-hidden="true">
-                <rect x="3" y="3" width="42" height="42" rx="4" fill="#4a3c2e" />
-                <rect x="7" y="12" width="34" height="25" rx="4" fill="currentColor" />
-                <path d="M11 33h26M12 17h24" stroke="#fff3bd" strokeOpacity=".5" strokeWidth="2" />
-                <path d="M3 22h5v8H3" fill="currentColor" />
-              </svg>
-              <span>Комната</span>
-            </button>
+            {(["corridor", "nest", "storage"] as const).map((option) => (
+              <button
+                type="button"
+                key={option}
+                className={`command-button ${tool === option ? "selected" : ""}`}
+                aria-pressed={tool === option}
+                title={tools[option].title}
+                onClick={() => setTool(option)}
+              >
+                <ToolIcon tool={option} />
+                <span>{tools[option].label}</span>
+              </button>
+            ))}
           </fieldset>
         </div>
         <div className="command-description">
-          <strong>{tool === "demolish" ? "Сломать" : tool === "corridor" ? "Коридор" : "Комната"}</strong>
-          <p>
-            {tool === "demolish"
-              ? "Убирай крайние клетки, сохраняя комнаты и проходы."
-              : tool === "corridor"
-                ? "Продолжай от коридора или начни сбоку от комнаты. Только коридоры ведут вниз."
-                : "Строй сбоку от коридора. Расширяй влево и вправо до ×4."}
-          </p>
+          <strong>{tools[tool].label}</strong>
+          <p>{tools[tool].description}</p>
           {tool !== "demolish" && (
             <small>
               <span className="chip">
@@ -88,12 +118,12 @@ export function CommandPanel({ tool, setTool, food, hasEggSource, spawnAnt }: Pr
           className={`command-button demolition ${tool === "demolish" ? "selected" : ""}`}
           onClick={() => setTool("demolish")}
           aria-pressed={tool === "demolish"}
-          title="Сломать край комнаты, коридора или чертежа"
+          title={tools.demolish.title}
         >
           <svg viewBox="0 0 48 48" aria-hidden="true">
             <path d="m12 12 24 24m0-24L12 36" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
           </svg>
-          <span>Сломать</span>
+          <span>{tools.demolish.label}</span>
         </button>
         <Spawning food={food} hasEggSource={hasEggSource} spawnAnt={spawnAnt} />
       </div>

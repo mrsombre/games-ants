@@ -29,7 +29,7 @@ export function demolitionError(game: Game, x: number, y: number): string | null
   const tile = colony[id];
   if (!tile) return "Здесь нечего ломать";
   if (y <= 1) return "Вход в муравейник нельзя сломать";
-  if (roomCellOccupied(game, id)) return "Сначала освободи клетку от яиц или дождись доставки";
+  if (roomCellOccupied(game, id)) return "Сначала освободи клетку от яиц и еды или дождись доставки";
   if (nestCells(game).some((cell) => cellKey(cell) === id)) return "Комнату матки нельзя сломать";
   if (isRoom(tile)) {
     const span = roomSpan(colony, x, y);

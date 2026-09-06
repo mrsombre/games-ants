@@ -4,7 +4,10 @@ import type { Unit } from "./units";
 
 export type FoodKind = "apple" | "mushroom" | "caterpillar";
 export type ItemLocation = { kind: "cell"; cell: Cell } | { kind: "carried"; unitId: number };
-export type Item = { id: number; location: ItemLocation } & ({ kind: "egg" } | { kind: "food"; food: FoodKind });
+export type Item = { id: number; location: ItemLocation } & (
+  | { kind: "egg" }
+  | { kind: "food"; food: FoodKind; portions: number }
+);
 export const foodValue: Record<FoodKind, number> = { apple: 1, mushroom: 1, caterpillar: 2 };
 export const carriedItem = (game: Game, unit: Unit) =>
   game.items.find((item) => item.location.kind === "carried" && item.location.unitId === unit.id);
