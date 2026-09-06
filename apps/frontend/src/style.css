@@ -74,6 +74,10 @@ a:focus-visible {
   border-right: 1px solid #deded2;
   white-space: nowrap;
 }
+.egg-count {
+  padding-left: 12px;
+  border-left: 1px solid #deded2;
+}
 .stats {
   min-width: 0;
   display: flex;
@@ -368,6 +372,9 @@ a:focus-visible {
   }
   .ant-total {
     padding-right: 8px;
+  }
+  .egg-count {
+    padding-left: 8px;
   }
   .latest-event {
     display: none;

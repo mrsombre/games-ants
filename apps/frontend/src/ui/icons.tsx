@@ -12,6 +12,17 @@ export function FoodIcon({ className }: { className?: string }) {
   );
 }
 
+export function EggIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 40 40" aria-hidden="true">
+      <ellipse cx="20" cy="32" rx="14" ry="4" fill="#483921" fillOpacity=".2" />
+      <ellipse cx="11" cy="24" rx="5" ry="8" fill="#f5e8bc" stroke="#c5ad75" strokeWidth="1.5" />
+      <ellipse cx="29" cy="24" rx="5" ry="8" fill="#f5e8bc" stroke="#c5ad75" strokeWidth="1.5" />
+      <ellipse cx="20" cy="19" rx="5.5" ry="9" fill="#f5e8bc" stroke="#c5ad75" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
 export function NestIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 40 40" aria-hidden="true">

@@ -3,9 +3,9 @@ import { queenOf } from "./game/model";
 import { roles } from "./game/rendering/appearance";
 import { nestCapacity, nestFree, type SpawnBlock, spawnBlock } from "./game/spawning";
 import { foodStock, STORAGE_SLOTS } from "./game/storage";
-import type { SpawnRole } from "./game/units";
+import { type SpawnRole, spawnCost } from "./game/units";
 import { CommandPanel } from "./ui/command-panel";
-import { AntHead, FoodIcon, NestIcon } from "./ui/icons";
+import { AntHead, EggIcon, FoodIcon, NestIcon } from "./ui/icons";
 import { useGame } from "./ui/use-game";
 
 export function App() {
@@ -15,9 +15,10 @@ export function App() {
   const capacity = nestCapacity(game);
   const free = Math.max(0, nestFree(game));
   const blocks = Object.fromEntries(
-    (Object.keys(roles) as SpawnRole[]).map((role) => [role, spawnBlock(game, role)]),
+    (Object.keys(spawnCost) as SpawnRole[]).map((role) => [role, spawnBlock(game, role)]),
   ) as Record<SpawnRole, SpawnBlock | null>;
   const ants = game.units.filter((unit) => unit.faction === "colony" && unit.role !== "queen");
+  const eggs = game.items.filter((item) => item.kind === "egg").length;
   const enemies = game.units.filter((unit) => unit.faction === "raiders");
   const scoutsAway = ants.filter((ant) => ant.job?.kind === "forage" && ant.job.phase === "away");
   const phase = dayPhase(game.elapsedSeconds);
@@ -35,7 +36,7 @@ export function App() {
             <AntHead />
             <strong>{ants.length}</strong>
           </div>
-          {(Object.keys(roles) as SpawnRole[]).map((role) => {
+          {(Object.keys(spawnCost) as SpawnRole[]).map((role) => {
             const count = ants.filter((ant) => ant.role === role).length;
             return (
               <div
@@ -50,6 +51,10 @@ export function App() {
               </div>
             );
           })}
+          <div className="ant-count egg-count" role="img" title="Яйца" aria-label={`Яйца: ${eggs}`}>
+            <EggIcon />
+            <strong>{eggs}</strong>
+          </div>
         </section>
         <section className="stats" aria-label="Ресурсы">
           <div
