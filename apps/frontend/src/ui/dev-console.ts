@@ -1,6 +1,7 @@
 import type { DayPhaseId } from "../game/day-cycle";
-import { jumpToPhase, pauseNarrator, setDifficulty, skipTime } from "../game/debug";
+import { jumpToPhase, pauseNarrator, setDifficulty, skipTime, startIncidentNow } from "../game/debug";
 import type { Game, GameEvent } from "../game/model";
+import type { IncidentKind } from "../game/narrator";
 import { eventMessage } from "./event-message";
 
 type Command = { readonly signature: string; readonly about: string; readonly run: (...args: never[]) => unknown };
@@ -49,6 +50,16 @@ export function installDevConsole(game: Game, refresh: () => void, showMessage: 
         for (const message of messages) console.log(message);
         const last = messages.at(-1);
         if (last) showMessage(last);
+        return reason;
+      }),
+    },
+    incident: {
+      signature: "dev.incident(kind, size?)",
+      about: "Запустить инцидент немедленно; размер по умолчанию — штатная формула инцидента",
+      run: commanded((kind: IncidentKind, size?: number) => {
+        const events: GameEvent[] = [];
+        const reason = startIncidentNow(game, kind, events, size);
+        for (const event of events) showMessage(eventMessage(event));
         return reason;
       }),
     },

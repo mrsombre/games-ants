@@ -1,6 +1,6 @@
 import { DAY_PHASE_IDS, DAY_PHASE_SECONDS, type DayPhaseId } from "./day-cycle";
 import { type Game, type GameEvent, SIMULATION_STEP } from "./model";
-import { DAY_SECONDS } from "./narrator";
+import { DAY_SECONDS, type IncidentKind, incidents, startIncident } from "./narrator";
 import { stepGame } from "./simulation";
 
 export function setDifficulty(game: Game, value: number): string | null {
@@ -37,5 +37,14 @@ export function skipTime(game: Game, seconds: number, events: GameEvent[]): stri
   if (seconds > DAY_SECONDS) return `Перемотка: не больше ${DAY_SECONDS} с за вызов`;
   for (let step = 0; step < Math.round(seconds / SIMULATION_STEP); step++)
     events.push(...stepGame(game, SIMULATION_STEP));
+  return null;
+}
+
+export function startIncidentNow(game: Game, kind: IncidentKind, events: GameEvent[], size?: number): string | null {
+  const incident = incidents.find((entry) => entry.kind === kind);
+  if (!incident) return `Инцидент: неизвестный вид, нужен один из ${incidents.map((entry) => entry.kind).join(", ")}`;
+  const wanted = size ?? incident.size(game);
+  if (!Number.isInteger(wanted) || wanted < 1) return "Инцидент: размер — целое число от 1";
+  startIncident(game, kind, wanted, events);
   return null;
 }

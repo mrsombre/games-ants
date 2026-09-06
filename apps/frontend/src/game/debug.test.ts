@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { DAY_PHASE_IDS, DAY_PHASES, type DayPhaseId, dayPhase } from "./day-cycle";
-import { jumpToPhase, pauseNarrator, setDifficulty, skipTime } from "./debug";
+import { jumpToPhase, pauseNarrator, setDifficulty, skipTime, startIncidentNow } from "./debug";
 import { type GameEvent, SIMULATION_STEP } from "./model";
-import { advanceNarrator, createNarrator, settleIncidents } from "./narrator";
+import { advanceNarrator, createNarrator, incidentOf, settleIncidents } from "./narrator";
 import { addUnit, advance, world } from "./test-support";
 import { applyTool } from "./tools";
 
@@ -195,6 +195,80 @@ describe("skip", () => {
       const game = narrated();
       expect(skipTime(game, seconds, [])).toBe("Перемотка: нужно положительное число секунд");
       expect(game.elapsedSeconds).toBe(0);
+    }
+  });
+});
+
+describe("incident", () => {
+  const raiders = (game: ReturnType<typeof narrated>) => game.units.filter((unit) => unit.faction === "raiders");
+  it("starts a wave at once: raiders appear and the start event is raised", () => {
+    const game = narrated();
+    const events: GameEvent[] = [];
+    expect(startIncidentNow(game, "raid", events)).toBe(null);
+    expect(raiders(game).length).toBeGreaterThan(0);
+    expect(events).toEqual([{ kind: "incident-started", incident: "raid", size: raiders(game).length }]);
+    expect(game.narrator.active).toBe("raid");
+  });
+  it("uses the regular size formula by default", () => {
+    const game = narrated();
+    const expected = incidentOf("raid").size(game);
+    expect(startIncidentNow(game, "raid", [])).toBe(null);
+    expect(raiders(game).length).toBe(expected);
+  });
+  it("takes an explicit size", () => {
+    const game = narrated();
+    expect(startIncidentNow(game, "raid", [], 4)).toBe(null);
+    expect(raiders(game).length).toBe(4);
+  });
+  it("starts while the narrator is paused", () => {
+    const game = narrated(0);
+    const events: GameEvent[] = [];
+    expect(startIncidentNow(game, "raid", events, 2)).toBe(null);
+    expect(raiders(game).length).toBe(2);
+    expect(events.length).toBe(1);
+  });
+  it("stacks a second wave on top of an active threat", () => {
+    const game = narrated();
+    expect(startIncidentNow(game, "raid", [], 2)).toBe(null);
+    const events: GameEvent[] = [];
+    expect(startIncidentNow(game, "thieves", events, 3)).toBe(null);
+    expect(raiders(game).length).toBe(5);
+    expect(game.narrator.active).toBe("thieves");
+    expect(events).toEqual([{ kind: "incident-started", incident: "thieves", size: 3 }]);
+  });
+  it("starts a boon in any tension phase, ignoring the phase allow list", () => {
+    const game = narrated();
+    game.narrator.phase = "peak";
+    const events: GameEvent[] = [];
+    expect(startIncidentNow(game, "rich-forage", events, 1)).toBe(null);
+    expect(game.narrator.boon?.kind).toBe("rich-forage");
+    expect(game.narrator.active).toBe(null);
+    expect(events).toEqual([{ kind: "incident-started", incident: "rich-forage", size: 1 }]);
+  });
+  it("moves the peak phase to recovery like the regular start does", () => {
+    const game = narrated();
+    game.narrator.phase = "peak";
+    game.elapsedSeconds = 700;
+    expect(startIncidentNow(game, "raid", [], 1)).toBe(null);
+    expect(game.narrator.phase).toBe("recovery");
+    expect(game.narrator.lastPeakAt).toBe(700);
+  });
+  it("refuses an unknown kind and changes nothing", () => {
+    const game = narrated();
+    const events: GameEvent[] = [];
+    expect(startIncidentNow(game, "swarm" as never, events)).toBe(
+      "Инцидент: неизвестный вид, нужен один из raid, thieves, boss, flood, predator, rich-forage, food-nearby",
+    );
+    expect(raiders(game)).toEqual([]);
+    expect(game.narrator.active).toBe(null);
+    expect(events).toEqual([]);
+  });
+  it("refuses a size that is not an integer of at least one", () => {
+    for (const size of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, "2" as unknown as number]) {
+      const game = narrated();
+      expect(startIncidentNow(game, "raid", [], size)).toBe("Инцидент: размер — целое число от 1");
+      expect(raiders(game)).toEqual([]);
+      expect(game.narrator.active).toBe(null);
     }
   });
 });

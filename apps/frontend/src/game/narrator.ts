@@ -239,7 +239,7 @@ export function pickIncident(game: Game, allowed: readonly IncidentClass[]) {
 }
 
 export const incidentOf = (kind: IncidentKind) => incidents.find((entry) => entry.kind === kind) as Incident;
-function startIncident(game: Game, kind: IncidentKind, size: number, events: GameEvent[]) {
+export function startIncident(game: Game, kind: IncidentKind, size: number, events: GameEvent[]) {
   const narrator = game.narrator;
   const incident = incidentOf(kind);
   const started = incident.start(game, size);
