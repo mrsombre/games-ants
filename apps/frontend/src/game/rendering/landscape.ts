@@ -24,8 +24,9 @@ export async function createLandscape() {
   const landscape = new Graphics();
   const design = forests[Math.floor(Math.random() * forests.length)] ?? forests[0];
   const forest = new Sprite(await Assets.load(design.source));
-  forest.width = WIDTH;
-  forest.height = HORIZON;
+  const scale = Math.max(WIDTH / forest.texture.width, HORIZON / forest.texture.height);
+  forest.scale.set(scale);
+  forest.position.set((WIDTH - forest.width) / 2, (HORIZON - forest.height) * 0.35);
   const forestMask = new Graphics().rect(0, 0, WIDTH, HORIZON).fill(0xffffff);
   forest.mask = forestMask;
   drawGround(landscape);
