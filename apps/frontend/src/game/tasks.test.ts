@@ -250,9 +250,8 @@ it("offers expeditions only while a storage slot is free, counting reserved deli
   const scout = addUnit(game, "scout", { x: 8, y: 3 });
   for (let i = 0; i < 3; i++) food(game, { x: 6, y: 2 });
   food(game, { x: 7, y: 2 });
-  food(game, { x: 7, y: 2 });
   const carrier = addUnit(game, "scout", { x: 8, y: 2 });
-  const carried = food(game, carrier.cell);
+  const carried = food(game, carrier.cell, "caterpillar");
   carried.location = { kind: "carried", unitId: carrier.id };
   carrier.job = { kind: "haul", itemId: carried.id, destination: { x: 7, y: 2 }, phase: "delivery" };
   auction(game);

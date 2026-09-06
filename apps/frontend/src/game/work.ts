@@ -1,5 +1,5 @@
 import { type Cell, cellKey, point, sameCell } from "./cells";
-import { dropCargo, type FoodKind, foodValue, pickUp } from "./items";
+import { dropCargo, type FoodKind, foodValue, type Item, pickUp } from "./items";
 import { EPSILON, type Game, type GameEvent } from "./model";
 import { type Navigation, setRoute } from "./navigation";
 import { foodStorageCells, freeSlots } from "./storage";
@@ -35,12 +35,14 @@ function discardFood(game: Game, unit: Unit, cargo: FoodKind, events: GameEvent[
   unit.job = null;
   events.push({ kind: "food-discarded", scoutId: unit.id, cargo });
 }
-function storeFood(game: Game, unit: Unit, cargo: FoodKind, events: GameEvent[]) {
-  if (freeSlots(game, cellKey(unit.cell), unit.id) <= 0) return discardFood(game, unit, cargo, events);
+function storeFood(game: Game, unit: Unit, item: Item & { kind: "food" }, events: GameEvent[]) {
+  const free = freeSlots(game, cellKey(unit.cell), unit.id);
+  if (free <= 0) return discardFood(game, unit, item.food, events);
+  item.portions = Math.min(item.portions, free);
   dropCargo(game, unit);
   game.deliveries++;
   unit.job = null;
-  events.push({ kind: "scout-delivered", scoutId: unit.id, cargo, food: foodValue[cargo] });
+  events.push({ kind: "scout-delivered", scoutId: unit.id, cargo: item.food, food: item.portions });
 }
 function nearestStorage(game: Game, unit: Unit, navigation: Navigation) {
   let best: { cell: Cell; route: Cell[] } | undefined;
@@ -82,7 +84,7 @@ export function performJob(
         if (unit.faction === "raiders") {
           game.items = game.items.filter((entry) => entry.id !== item.id);
           game.units = game.units.filter((entry) => entry.id !== unit.id);
-        } else if (item.kind === "food") return storeFood(game, unit, item.food, events);
+        } else if (item.kind === "food") return storeFood(game, unit, item, events);
         else dropCargo(game, unit);
         unit.job = null;
       }

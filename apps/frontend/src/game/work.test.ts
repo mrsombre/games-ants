@@ -102,7 +102,6 @@ it("stores delivered food in the storage cell and reports it once, ignoring its 
   const scout = addUnit(game, "scout", { x: 7, y: 2 });
   const retained = egg(game, { x: 9, y: 3 });
   food(game, scout.cell);
-  food(game, scout.cell);
   const cargo = food(game, scout.cell, "caterpillar");
   cargo.location = { kind: "carried", unitId: scout.id };
   scout.job = { kind: "haul", itemId: cargo.id, destination: scout.cell, phase: "delivery" };
@@ -111,10 +110,24 @@ it("stores delivered food in the storage cell and reports it once, ignoring its 
   expect(cargo.location).toEqual({ kind: "cell", cell: { x: 7, y: 2 } });
   expect(game.items).toContain(retained);
   expect(game.units).toHaveLength(2);
-  expect(foodStock(game)).toBe(4);
+  expect(foodStock(game)).toBe(3);
   expect(game.deliveries).toBe(1);
   expect(events).toEqual([{ kind: "scout-delivered", scoutId: scout.id, cargo: "caterpillar", food: 2 }]);
   expect(scout.job).toBeNull();
+});
+it("loses the part of a caterpillar that does not fit into the last free slot", () => {
+  const game = world();
+  const scout = addUnit(game, "scout", { x: 7, y: 2 });
+  food(game, scout.cell);
+  food(game, scout.cell);
+  const cargo = food(game, scout.cell, "caterpillar");
+  cargo.location = { kind: "carried", unitId: scout.id };
+  scout.job = { kind: "haul", itemId: cargo.id, destination: scout.cell, phase: "delivery" };
+  const events: GameEvent[] = [];
+  performJob(game, scout, 0.05, new Navigation(game.colony), () => 0.5, events);
+  expect(cargo.portions).toBe(1);
+  expect(foodStock(game)).toBe(3);
+  expect(events).toEqual([{ kind: "scout-delivered", scoutId: scout.id, cargo: "caterpillar", food: 1 }]);
 });
 it("throws food away at a storage cell that filled up on the way", () => {
   const game = world();
