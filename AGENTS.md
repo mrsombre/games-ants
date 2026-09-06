@@ -6,6 +6,11 @@ Browser game games-ants, inspired by Fallout Shelter, with a static frontend and
 Worker API. Documentation is split into development, system design and game mechanics sections.
 This scaffold has no Telegram integration.
 
+## Interactions
+
+- Answer the user in Russian, whatever language the question is asked in. Commands, code,
+  identifiers and technology names stay in English.
+
 ## Boundaries
 
 - apps/frontend owns browser UI and the Vite configuration; apps/backend owns Hono HTTP routes.
