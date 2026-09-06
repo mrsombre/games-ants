@@ -15,15 +15,15 @@ export const nestPopulation = (game: Game) =>
   game.spawns.length;
 export const nestFree = (game: Game) => nestCapacity(game) - nestPopulation(game);
 
+export const spawnClaimed = (game: Game, itemId: number) => game.spawns.some((spawn) => spawn.eggId === itemId);
 export function spawnableEggs(game: Game) {
-  const reserved = new Set(game.spawns.map((spawn) => spawn.eggId));
   return game.items.filter(
     (item): item is Item & { kind: "egg"; location: { kind: "cell"; cell: Cell } } =>
       item.kind === "egg" &&
       item.location.kind === "cell" &&
       game.colony[cellKey(item.location.cell)] === "nest" &&
       !itemReserved(game, item.id) &&
-      !reserved.has(item.id),
+      !spawnClaimed(game, item.id),
   );
 }
 export function spawnBlock(game: Game, role: SpawnRole): SpawnBlock | null {

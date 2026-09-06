@@ -23,7 +23,7 @@ it("enforces role, physical pickup, one item per carrier and one carrier per ite
   expect(carriedItem(game, worker)).toBeUndefined();
   expect(pickUp(game, worker, another)).toBe(false);
 });
-it("protects reservations and cancels hatching only when a raider physically picks up the egg", () => {
+it("protects a haul reservation from a thief until the carrier drops the job", () => {
   const game = world();
   const worker = addUnit(game),
     thief = addUnit(game, "worker", worker.cell, "raiders");
@@ -31,23 +31,15 @@ it("protects reservations and cancels hatching only when a raider physically pic
   worker.job = { kind: "haul", itemId: item.id, destination: { x: 6, y: 4 }, phase: "pickup" };
   expect(pickUp(game, thief, item)).toBe(false);
   worker.job = null;
-  game.spawns = [{ eggId: item.id, role: "worker", progress: 0.5 }];
-  expect(pickUp(game, worker, item)).toBe(false);
-  expect(game.spawns).toHaveLength(1);
   expect(pickUp(game, thief, item)).toBe(true);
-  expect(game.spawns).toEqual([]);
 });
 
-it("keeps other hatches and carriers intact when a scout picks up food or a thief takes one egg", () => {
+it("keeps carriers intact when a scout picks up food or a thief takes one egg", () => {
   const game = world();
   const worker = addUnit(game),
     scout = addUnit(game, "scout");
-  const item = egg(game, worker.cell),
-    retained = egg(game, { x: 6, y: 4 });
-  game.spawns = [
-    { eggId: item.id, role: "worker", progress: 0 },
-    { eggId: retained.id, role: "scout", progress: 0.2 },
-  ];
+  const item = egg(game, worker.cell);
+  egg(game, { x: 6, y: 4 });
   const apple = food(game, scout.cell);
   expect(pickUp(game, worker, apple)).toBe(false);
   expect(pickUp(game, scout, apple)).toBe(true);
@@ -55,5 +47,4 @@ it("keeps other hatches and carriers intact when a scout picks up food or a thie
   const thief = addUnit(game, "worker", worker.cell, "raiders");
   expect(pickUp(game, thief, item)).toBe(true);
   expect(carriedItem(game, thief)?.id).toBe(item.id);
-  expect(game.spawns).toEqual([{ eggId: retained.id, role: "scout", progress: 0.2 }]);
 });

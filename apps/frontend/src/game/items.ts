@@ -36,10 +36,6 @@ export function pickUp(game: Game, unit: Unit, item: Item) {
     !sameCell(item.location.cell, unit.cell)
   )
     return false;
-  if (game.spawns.some((spawn) => spawn.eggId === item.id)) {
-    if (unit.faction === "colony") return false;
-    game.spawns = game.spawns.filter((spawn) => spawn.eggId !== item.id);
-  }
   item.location = { kind: "carried", unitId: unit.id };
   return true;
 }

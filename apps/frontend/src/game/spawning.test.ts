@@ -114,6 +114,20 @@ it("cancels an orphaned hatch order rather than keeping a permanently stuck rese
   expect(game.units).toHaveLength(1);
 });
 
+it("drops the order of an egg a raider carried off and keeps the other order running", () => {
+  const game = world();
+  const stolen = egg(game, { x: 6, y: 4 }),
+    retained = egg(game, { x: 7, y: 4 });
+  game.spawns = [
+    { eggId: stolen.id, role: "worker", progress: 0 },
+    { eggId: retained.id, role: "scout", progress: 0.2 },
+  ];
+  const thief = addUnit(game, "worker", { x: 6, y: 4 }, "raiders");
+  advance(game, 0.05);
+  expect(stolen.location).toEqual({ kind: "carried", unitId: thief.id });
+  expect(game.spawns.map((spawn) => spawn.eggId)).toEqual([retained.id]);
+});
+
 it("does not let one transport reserve unrelated eggs, and ignores dead holders", () => {
   const game = world();
   const worker = addUnit(game);

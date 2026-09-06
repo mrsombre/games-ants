@@ -5,6 +5,7 @@ import { canCarry, itemReserved } from "./items";
 import type { Job } from "./jobs";
 import { type Game, homeOf } from "./model";
 import { type Navigation, setRoute } from "./navigation";
+import { spawnClaimed } from "./spawning";
 import { foodStorageCells, storageCapacity } from "./storage";
 import { type Faction, present, traits, type Unit } from "./units";
 
@@ -49,7 +50,7 @@ function availableOffers(game: Game, faction: Faction, navigation: Navigation, r
   const foodStorage = faction === "colony" ? foodStorageCells(game).map((cell) => ({ cell, distance: 0 })) : [];
   for (const item of game.items) {
     if (item.location.kind !== "cell" || itemReserved(game, item.id)) continue;
-    if (faction === "colony" && game.spawns.some((spawn) => spawn.eggId === item.id)) continue;
+    if (faction === "colony" && spawnClaimed(game, item.id)) continue;
     const source = item.location.cell;
     const tile = game.colony[cellKey(source)];
     if (
