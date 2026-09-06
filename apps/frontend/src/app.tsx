@@ -68,18 +68,18 @@ export function App() {
         <section className="stats" aria-label="Ресурсы">
           <div
             role="img"
-            aria-label={`Еда: вместимость ${foodCapacity}, сейчас ${food}`}
-            title="Еда: вместимость хранилища / сейчас"
+            aria-label={`Еда: сейчас ${food}, вместимость ${foodCapacity}`}
+            title="Еда: сейчас / вместимость хранилища"
           >
             <FoodIcon className="resource-icon" />
             <strong data-testid="food">
-              {foodCapacity} / {food}
+              {food} / {foodCapacity}
             </strong>
           </div>
-          <div role="img" aria-label={`Гнездо: всего ${capacity}, свободно ${free}`} title="Гнездо: всего / свободно">
+          <div role="img" aria-label={`Гнездо: свободно ${free}, всего ${capacity}`} title="Гнездо: свободно / всего">
             <NestIcon className="resource-icon" />
             <strong data-testid="nest">
-              {capacity} / {free}
+              {free} / {capacity}
             </strong>
           </div>
         </section>
