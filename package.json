@@ -16,10 +16,13 @@
     "check:ci": "biome check .",
     "test": "pnpm --reporter=append-only run -r --parallel --if-present --no-bail test",
     "type-check": "pnpm types && pnpm --reporter=append-only run -r --parallel --if-present --no-bail type-check",
-    "types": "wrangler types --strict-vars=false"
+    "types": "wrangler types --strict-vars=false",
+    "test:mutation": "stryker run"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.7",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.10",
     "wrangler": "^4.118.0"
