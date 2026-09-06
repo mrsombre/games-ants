@@ -1,5 +1,6 @@
 import { type Cell, COLS, cellKey, ENTRANCE, neighbors, point, sameCell } from "./cells";
 import { connected } from "./colony";
+import { MAX_BUILDERS } from "./construction";
 import { eggStorageCells, queenCells } from "./eggs";
 import { canCarry, itemReserved } from "./items";
 import type { Job } from "./jobs";
@@ -31,11 +32,14 @@ function availableOffers(game: Game, faction: Faction, navigation: Navigation, r
     }
     for (const [target, blueprint] of Object.entries(game.blueprints)) {
       const cell = point(target);
+      const busy = game.units.filter(
+        (unit) => unit.faction === faction && present(unit) && unit.job?.kind === "build" && unit.job.target === target,
+      ).length;
       for (const stand of neighbors(cell)) {
         const tile = game.colony[cellKey(stand)];
-        if (connected(tile, blueprint.tile, stand.y === cell.y)) {
-          offers.push(offer({ kind: "build", target, stand }, stand, 100));
-        }
+        if (!connected(tile, blueprint.tile, stand.y === cell.y)) continue;
+        for (let slot = busy; slot < MAX_BUILDERS; slot++)
+          offers.push(offer({ kind: "build", target, stand }, stand, 100, [`build:${target}:${slot}`]));
       }
     }
     if (storageCapacity(game) > 0) {

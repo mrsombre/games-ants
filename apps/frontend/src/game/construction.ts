@@ -4,6 +4,7 @@ import { EPSILON, type Game } from "./model";
 
 export type Blueprint = { tile: BuildTool; progress: number; workers: number };
 export const buildSeconds: Record<BuildTool, number> = { corridor: 20, nest: 30, storage: 30 };
+export const MAX_BUILDERS = 3;
 
 export function plannedColony(game: Game): Colony {
   return { ...game.colony, ...Object.fromEntries(Object.entries(game.blueprints).map(([id, b]) => [id, b.tile])) };

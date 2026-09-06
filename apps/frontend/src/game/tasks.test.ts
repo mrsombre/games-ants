@@ -58,6 +58,20 @@ it("shares construction among free workers but never preempts a carrier with a h
   expect(carrier.job?.kind).toBe("haul");
   expect(builders.map((unit) => unit.job?.kind)).toEqual(["build", "build"]);
 });
+it("caps each blueprint at three builders across repeated auctions", () => {
+  const game = world();
+  const workers = Array.from({ length: 5 }, () => addUnit(game));
+  planBuild(game, 8, 6, "corridor");
+  auction(game);
+  expect(workers.filter((unit) => unit.job?.kind === "build")).toHaveLength(3);
+  auction(game);
+  expect(workers.filter((unit) => unit.job?.kind === "build")).toHaveLength(3);
+  const builders = workers.filter((unit) => unit.job?.kind === "build");
+  expect(builders).toHaveLength(3);
+  for (const unit of builders.slice(1)) unit.job = null;
+  auction(game);
+  expect(workers.filter((unit) => unit.job?.kind === "build")).toHaveLength(3);
+});
 it("skips unreachable work and eggs reserved for hatching", () => {
   const game = world();
   const worker = addUnit(game);
