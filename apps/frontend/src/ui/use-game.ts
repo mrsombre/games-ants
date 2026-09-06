@@ -80,6 +80,10 @@ export function useGame() {
     };
   }, [game]);
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    void import("./dev-console").then((module) => module.installDevConsole(game, () => refresh((n) => n + 1)));
+  }, [game]);
+  useEffect(() => {
     const interval = window.setInterval(
       () => setTipIndex((index) => (index + 1) % gameplayTips.length),
       GAMEPLAY_TIP_INTERVAL,
