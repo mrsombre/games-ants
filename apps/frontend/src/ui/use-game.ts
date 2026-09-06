@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { type FoodKind, foodValue } from "../game/items";
 import { SIMULATION_STEP } from "../game/model";
+import type { IncidentKind } from "../game/narrator";
 import { roles } from "../game/rendering/appearance";
 import { createScene } from "../game/scene";
 import { createGame, stepGame } from "../game/simulation";
@@ -49,8 +50,9 @@ export function useGame() {
           last = now;
           while (accumulator >= SIMULATION_STEP) {
             for (const event of stepGame(game, SIMULATION_STEP)) {
-              if (event.kind === "attack-started") setMessage(`Атака! Врагов: ${event.count}. Воины идут на перехват.`);
-              if (event.kind === "attack-ended") setMessage("Набег окончен. Муравьи возвращаются к делам.");
+              if (event.kind === "incident-warned") setMessage(incidentWarning(event.incident, event.seconds));
+              if (event.kind === "incident-started") setMessage(incidentStart(event.incident, event.size));
+              if (event.kind === "incident-ended") setMessage(incidentEnd[event.incident]);
               if (event.kind === "queen-died") setMessage("Королева погибла. Новых яиц больше не будет.");
               if (event.kind === "scout-delivered") setMessage(scoutDeliveryMessage(event.cargo));
               if (event.kind === "food-discarded")
@@ -100,6 +102,31 @@ const toolSuccess: Record<Tool, string> = {
   storage: "Чертёж поставлен. Рабочие строят, когда к нему готов проход.",
   demolish: "Элемент сломан",
 };
+
+const incidentEnd: Record<IncidentKind, string> = {
+  raid: "Набег окончен. Муравьи возвращаются к делам.",
+  thieves: "Воры ушли. Расплод снова под присмотром.",
+  "rich-forage": "Богатый участок опустел.",
+  "food-nearby": "Еда рядом с гнездом закончилась.",
+};
+function incidentWarning(incident: IncidentKind, seconds: number) {
+  const when = `через ${Math.round(seconds)} с`;
+  return incident === "thieves"
+    ? `Разведка заметила воров ${when}. Прикрой расплод!`
+    : `Враги подходят ${when}. Готовь воинов!`;
+}
+function incidentStart(incident: IncidentKind, size: number) {
+  switch (incident) {
+    case "raid":
+      return `Атака! Врагов: ${size}. Воины идут на перехват.`;
+    case "thieves":
+      return `Воры в гнезде! Их ${size}, они охотятся за кладками.`;
+    case "rich-forage":
+      return "Разведчики нашли богатый участок: гусеницы попадаются чаще.";
+    case "food-nearby":
+      return "Еда прямо у гнезда: походы стали короткими.";
+  }
+}
 
 const foodLabel: Record<FoodKind, string> = {
   apple: "зелёное яблоко",

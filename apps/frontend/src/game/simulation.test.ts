@@ -158,13 +158,14 @@ it("steals a reachable egg, escapes through the entrance, cancels hatching and e
   const item = egg(game, { x: 9, y: 3 });
   game.spawns = [{ eggId: item.id, role: "worker", progress: 0.5 }];
   const thief = addUnit(game, "worker", { x: 9, y: 3 }, "raiders");
+  game.narrator.active = "thieves";
   stepGame(game);
   expect(item.location).toEqual({ kind: "carried", unitId: thief.id });
   expect(game.spawns).toEqual([]);
   const events = advance(game, 20);
   expect(game.units).not.toContain(thief);
   expect(game.items.some((entry) => entry.id === item.id)).toBe(false);
-  expect(events).toContainEqual({ kind: "attack-ended" });
+  expect(events).toContainEqual({ kind: "incident-ended", incident: "thieves" });
 });
 it("fights at the queen even while stealing, emits death once and stops egg laying", () => {
   const game = world();
@@ -172,6 +173,7 @@ it("fights at the queen even while stealing, emits death once and stops egg layi
   if (!queen) throw new Error("queen");
   queen.hp = 1;
   const enemy = addUnit(game, "warrior", queen.cell, "raiders");
+  game.narrator.active = "raid";
   const events = advance(game, 1);
   expect(queen.hp).toBe(0);
   expect(queenOf(game)).toBe(queen);
@@ -179,7 +181,9 @@ it("fights at the queen even while stealing, emits death once and stops egg layi
   events.push(...advance(game, 35));
   expect(game.items).toEqual([]);
   expect(events.filter((event) => event.kind === "queen-died")).toHaveLength(1);
-  expect(events.filter((event) => event.kind === "attack-ended")).toHaveLength(1);
+  expect(events.filter((event) => event.kind === "incident-ended")).toEqual([
+    { kind: "incident-ended", incident: "raid" },
+  ]);
 });
 
 it("rejects invalid blueprints without changing state and increments visual revision on valid changes", () => {
@@ -224,13 +228,13 @@ it("stops on contact reached during movement, preserves a carried item there and
   expect(worker.route).toEqual([]);
   expect(worker.hp).toBe(8);
 });
-it("emits only the scheduled raid event and gives subsequent waves fresh identifiers", () => {
-  const game = createGame(() => 0.5);
+it("emits only the scheduled incident events and gives subsequent waves fresh identifiers", () => {
+  const game = createGame(() => 0.5, 7);
   expect(stepGame(game, 0.05, () => 0.5)).toEqual([]);
-  game.attackTimer = 0;
-  expect(stepGame(game, 0.05, () => 0.5)).toEqual([{ kind: "attack-started", count: 2 }]);
+  game.narrator.pending = { incident: "raid", size: 2, at: 0 };
+  expect(stepGame(game, 0.05, () => 0.5)).toEqual([{ kind: "incident-started", incident: "raid", size: 2 }]);
   const firstIds = game.units.map((unit) => unit.id);
-  game.attackTimer = 0;
+  game.narrator.pending = { incident: "thieves", size: 2, at: 0 };
   stepGame(game, 0.05, () => 0.5);
   expect(new Set(game.units.map((unit) => unit.id)).size).toBe(game.units.length);
   expect(Math.min(...game.units.slice(firstIds.length).map((unit) => unit.id))).toBeGreaterThan(Math.max(...firstIds));
@@ -249,7 +253,7 @@ it.each([1, 17, 73])(
     expect(new Set(initialPositions).size).toBe(6);
     expect(game.units.filter((unit) => unit.faction === "colony")).toHaveLength(6);
     expect(game.items[0]?.kind).toBe("egg");
-    game.attackTimer = 5;
+    game.narrator.nextIncidentAt = 1;
     let balance = 2,
       maxUnitId = Math.max(...game.units.map((unit) => unit.id)),
       maxItemId = 1;
@@ -264,9 +268,14 @@ it.each([1, 17, 73])(
       if (tick % 100 === 0 && !startSpawn(game, "worker", random)) balance--;
       for (const event of stepGame(game, 0.05, random)) {
         if (event.kind === "scout-delivered") balance += event.food;
-        expect(["scout-delivered", "food-discarded", "attack-started", "attack-ended", "queen-died"]).toContain(
-          event.kind,
-        );
+        expect([
+          "scout-delivered",
+          "food-discarded",
+          "incident-warned",
+          "incident-started",
+          "incident-ended",
+          "queen-died",
+        ]).toContain(event.kind);
       }
       for (const unit of game.units) {
         if (!lastUnitIds.has(unit.id)) {

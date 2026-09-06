@@ -10,10 +10,10 @@ export type Item = { id: number; location: ItemLocation } & (
 );
 export const foodValue: Record<FoodKind, number> = { apple: 1, mushroom: 1, caterpillar: 2 };
 export const forageWeight: Record<FoodKind, number> = { apple: 0.4, mushroom: 0.4, caterpillar: 0.2 };
-export function forage(roll: number): FoodKind {
+export function forage(roll: number, weights: Record<FoodKind, number> = forageWeight): FoodKind {
   let threshold = 0;
-  for (const kind of Object.keys(forageWeight) as FoodKind[]) {
-    threshold += forageWeight[kind];
+  for (const kind of Object.keys(weights) as FoodKind[]) {
+    threshold += weights[kind];
     if (roll < threshold) return kind;
   }
   return "caterpillar";

@@ -1,6 +1,7 @@
 import { type Cell, cellKey, point, sameCell } from "./cells";
 import { dropCargo, type FoodKind, foodValue, forage, type Item, pickUp } from "./items";
 import { EPSILON, type Game, type GameEvent } from "./model";
+import { forageSeconds, forageWeights } from "./narrator";
 import { type Navigation, setRoute } from "./navigation";
 import { foodStorageCells, freeSlots } from "./storage";
 import { jobValid, WANDER_MAX_SECONDS, WANDER_MIN_SECONDS } from "./tasks";
@@ -93,12 +94,12 @@ export function performJob(
     case "forage": {
       if (job.phase === "outbound") {
         job.phase = "away";
-        job.remaining = 5 + random() * 55;
+        job.remaining = forageSeconds(game, random());
         return;
       }
       job.remaining = Math.max(0, job.remaining - seconds);
       if (job.remaining > EPSILON) return;
-      const cargo = forage(random());
+      const cargo = forage(random(), forageWeights(game));
       const id = game.nextItemId++;
       game.items.push({
         id,

@@ -5,15 +5,15 @@ import { advanceConstruction } from "./construction";
 import { advanceEggs } from "./eggs";
 import { dropCargo } from "./items";
 import { type Game, type GameEvent, queenOf, SIMULATION_STEP } from "./model";
+import { advanceNarrator, createNarrator, settleIncidents } from "./narrator";
 import { move, Navigation } from "./navigation";
 import { advanceNesting } from "./nesting";
-import { advanceAttack, attackDelay, MAX_ENEMIES } from "./raids";
 import { advanceSpawns } from "./spawning";
 import { assignTasks } from "./tasks";
 import { createUnit, present, type SpawnRole, type Unit } from "./units";
 import { interruptJob, performJob, prepareJobs } from "./work";
 
-export function createGame(random: () => number = Math.random): Game {
+export function createGame(random: () => number = Math.random, seed = Math.floor(random() * 4294967296)): Game {
   const initialRoles: SpawnRole[] = ["worker", "worker", "worker", "scout", "warrior"];
   const cells = Object.keys(initialColony)
     .filter((id) => id !== cellKey(HOME))
@@ -41,9 +41,7 @@ export function createGame(random: () => number = Math.random): Game {
       { id: 3, kind: "food", food: "apple", portions: 1, location: { kind: "cell", cell: { x: 7, y: 2 } } },
     ],
     spawns: [],
-    attackTimer: attackDelay(random),
-    maxEnemies: MAX_ENEMIES,
-    raidsStarted: 0,
+    narrator: createNarrator(seed),
     eggTimer: 0,
     nestTimer: 0,
     nextItemId: 4,
@@ -88,8 +86,7 @@ export function stepGame(game: Game, seconds = SIMULATION_STEP, random: () => nu
   const events: GameEvent[] = [];
   game.elapsedSeconds += seconds;
   const queenWasAlive = (queenOf(game)?.hp ?? 0) > 0;
-  advanceAttack(game, seconds, random, events);
-  const wasAttack = game.units.some((unit) => unit.faction === "raiders");
+  advanceNarrator(game, seconds, events);
   advanceEggs(game, seconds);
   const navigation = new Navigation(game.colony);
   prepareJobs(game, seconds, navigation);
@@ -112,6 +109,6 @@ export function stepGame(game: Game, seconds = SIMULATION_STEP, random: () => nu
   game.units = game.units.filter((unit) => unit.hp > 0 || unit.role === "queen");
   advanceConstruction(game, seconds);
   advanceSpawns(game, seconds);
-  if (wasAttack && !game.units.some((unit) => unit.faction === "raiders")) events.push({ kind: "attack-ended" });
+  settleIncidents(game, events);
   return events;
 }

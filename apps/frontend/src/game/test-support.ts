@@ -5,13 +5,13 @@ import { createGame, stepGame } from "./simulation";
 import { createUnit, type Faction, type Role } from "./units";
 
 export function world() {
-  const game = createGame(() => 0.5);
+  const game = createGame(() => 0.5, 1);
   // The start layout has no nest away from the queen, so egg hauling needs this extra one.
   game.colony["6,4"] = "nest";
   game.colony["7,4"] = "nest";
   game.units = game.units.filter((unit) => unit.role === "queen");
   game.items = [];
-  game.attackTimer = Number.POSITIVE_INFINITY;
+  game.narrator.difficulty = 0;
   return game;
 }
 export function addUnit(game: Game, role: Role = "worker", cell: Cell = HOME, faction: Faction = "colony") {
