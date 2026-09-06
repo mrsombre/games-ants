@@ -72,7 +72,9 @@ export function useGame() {
   }, [game]);
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    void import("./dev-console").then((module) => module.installDevConsole(game, () => refresh((n) => n + 1)));
+    void import("./dev-console").then((module) =>
+      module.installDevConsole(game, () => refresh((n) => n + 1), setMessage),
+    );
   }, [game]);
   useEffect(() => {
     const interval = window.setInterval(

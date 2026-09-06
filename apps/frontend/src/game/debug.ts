@@ -1,4 +1,7 @@
-import type { Game } from "./model";
+import { DAY_PHASE_IDS, DAY_PHASE_SECONDS, type DayPhaseId } from "./day-cycle";
+import { type Game, type GameEvent, SIMULATION_STEP } from "./model";
+import { DAY_SECONDS } from "./narrator";
+import { stepGame } from "./simulation";
 
 export function setDifficulty(game: Game, value: number): string | null {
   // Number.isFinite also rejects the non-numbers the console can pass around the type.
@@ -9,4 +12,30 @@ export function setDifficulty(game: Game, value: number): string | null {
 
 export function pauseNarrator(game: Game): string | null {
   return setDifficulty(game, 0);
+}
+
+export function jumpToPhase(game: Game, day: number, phase: DayPhaseId): string | null {
+  if (!Number.isInteger(day) || day < 1) return "Телепорт времени: день — целое число от 1";
+  const index = DAY_PHASE_IDS.indexOf(phase);
+  if (index < 0) return `Телепорт времени: неизвестная фаза, нужна одна из ${DAY_PHASE_IDS.join(", ")}`;
+  const target = ((day - 1) * DAY_PHASE_IDS.length + index) * DAY_PHASE_SECONDS;
+  const delta = target - game.elapsedSeconds;
+  if (delta <= 0) return "Телепорт времени: только вперёд, назад и на месте нельзя";
+  game.elapsedSeconds = target;
+  // Absolute narrator deadlines move with the clock; relative timers keep their remaining time.
+  const narrator = game.narrator;
+  narrator.nextIncidentAt += delta;
+  narrator.lastPeakAt += delta;
+  if (narrator.pending) narrator.pending.at += delta;
+  if (narrator.boon) narrator.boon.until += delta;
+  if (narrator.effect) narrator.effect.until += delta;
+  return null;
+}
+
+export function skipTime(game: Game, seconds: number, events: GameEvent[]): string | null {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "Перемотка: нужно положительное число секунд";
+  if (seconds > DAY_SECONDS) return `Перемотка: не больше ${DAY_SECONDS} с за вызов`;
+  for (let step = 0; step < Math.round(seconds / SIMULATION_STEP); step++)
+    events.push(...stepGame(game, SIMULATION_STEP));
+  return null;
 }

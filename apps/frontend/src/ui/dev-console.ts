@@ -1,10 +1,12 @@
-import { pauseNarrator, setDifficulty } from "../game/debug";
-import type { Game } from "../game/model";
+import type { DayPhaseId } from "../game/day-cycle";
+import { jumpToPhase, pauseNarrator, setDifficulty, skipTime } from "../game/debug";
+import type { Game, GameEvent } from "../game/model";
+import { eventMessage } from "./event-message";
 
 type Command = { readonly signature: string; readonly about: string; readonly run: (...args: never[]) => unknown };
 
 // Kept on `window` and never removed, so the object outlives a hot module replacement.
-export function installDevConsole(game: Game, refresh: () => void) {
+export function installDevConsole(game: Game, refresh: () => void, showMessage: (text: string) => void) {
   const commanded =
     <A extends unknown[]>(run: (...args: A) => string | null) =>
     (...args: A) => {
@@ -31,6 +33,24 @@ export function installDevConsole(game: Game, refresh: () => void) {
       signature: "dev.difficulty(n)",
       about: "Задать множитель темпа нарратора: конечное неотрицательное число",
       run: commanded((value: number) => setDifficulty(game, value)),
+    },
+    day: {
+      signature: "dev.day(n, phase)",
+      about: "Телепортировать в начало фазы morning | noon | evening | night дня n, только вперёд",
+      run: commanded((day: number, phase: DayPhaseId) => jumpToPhase(game, day, phase)),
+    },
+    skip: {
+      signature: "dev.skip(seconds)",
+      about: "Прокрутить симуляцию на seconds секунд (не больше 600), события печатаются в консоль",
+      run: commanded((seconds: number) => {
+        const events: GameEvent[] = [];
+        const reason = skipTime(game, seconds, events);
+        const messages = events.map(eventMessage);
+        for (const message of messages) console.log(message);
+        const last = messages.at(-1);
+        if (last) showMessage(last);
+        return reason;
+      }),
     },
   };
   const api = Object.fromEntries(Object.entries(commands).map(([name, command]) => [name, command.run]));
