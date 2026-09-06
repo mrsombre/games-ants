@@ -4,12 +4,13 @@ import { roles } from "./game/rendering/appearance";
 import { nestCapacity, nestFree, type SpawnBlock, spawnBlock } from "./game/spawning";
 import { foodStock, STORAGE_SLOTS } from "./game/storage";
 import { type SpawnRole, spawnCost } from "./game/units";
+import { gameAlert } from "./ui/alert";
 import { CommandPanel } from "./ui/command-panel";
 import { AntHead, EggIcon, FoodIcon, NestIcon } from "./ui/icons";
 import { useGame } from "./ui/use-game";
 
 export function App() {
-  const { host, game, tool, setTool, message, tip, error, ready, landscapeName, spawnAnt } = useGame();
+  const { host, game, tool, setTool, tip, error, ready, landscapeName, spawnAnt } = useGame();
   const food = foodStock(game);
   const foodCapacity = Object.values(game.colony).filter((tile) => tile === "storage").length * STORAGE_SLOTS;
   const capacity = nestCapacity(game);
@@ -21,6 +22,7 @@ export function App() {
   const eggs = game.items.filter((item) => item.kind === "egg").length;
   const enemies = game.units.filter((unit) => unit.faction === "raiders");
   const scoutsAway = ants.filter((ant) => ant.job?.kind === "forage" && ant.job.phase === "away");
+  const alert = gameAlert(game);
   const phase = dayPhase(game.elapsedSeconds);
   const day = Math.floor(phase / DAY_PHASES.length) + 1;
   return (
@@ -56,6 +58,13 @@ export function App() {
             <strong>{eggs}</strong>
           </div>
         </section>
+        <div className="alert-slot" role="status" aria-live="assertive">
+          {alert && (
+            <span className={`alert alert-${alert.tone}`} title={alert.text}>
+              {alert.text}
+            </span>
+          )}
+        </div>
         <section className="stats" aria-label="Ресурсы">
           <div
             role="img"
@@ -74,9 +83,6 @@ export function App() {
             </strong>
           </div>
         </section>
-        <span className="latest-event" role="status" title={message}>
-          <i /> {message}
-        </span>
       </header>
       <section className="workspace">
         <div className="scene-panel">

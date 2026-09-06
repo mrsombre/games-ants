@@ -42,7 +42,7 @@ a:focus-visible {
   padding: 0 max(42px, calc((100vw - 1576px) / 2));
   border-bottom: 1px solid #deded2;
   display: grid;
-  grid-template-columns: 40% 20% 40%;
+  grid-template-columns: 1fr minmax(0, 560px) 1fr;
   align-items: center;
   background: #f3f1e9f2;
   box-shadow: 0 5px 20px #38422f12;
@@ -82,6 +82,7 @@ a:focus-visible {
   min-width: 0;
   display: flex;
   gap: 28px;
+  justify-self: end;
 }
 .stats > div {
   display: flex;
@@ -96,27 +97,56 @@ a:focus-visible {
   color: #38422f;
   font-variant-numeric: tabular-nums;
 }
+.alert-slot {
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+.alert {
+  min-width: 0;
+  max-width: 100%;
+  padding: 8px 16px;
+  border-radius: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.alert-siren {
+  color: #fff;
+  background: #c8322b;
+  animation: siren 0.8s steps(1, end) infinite;
+}
+.alert-threat {
+  color: #fff;
+  background: #c8322b;
+}
+.alert-lost {
+  color: #fff;
+  background: #5a2320;
+}
+.alert-boon {
+  color: #2f4a1f;
+  background: #d7e6bd;
+}
+@keyframes siren {
+  50% {
+    background: #7a1a15;
+    box-shadow: 0 0 0 4px #c8322b55;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .alert-siren {
+    animation: none;
+  }
+}
 .resource-icon {
   width: 34px;
   height: 34px;
   flex-shrink: 0;
 }
-.latest-event {
-  min-width: 0;
-  width: 100%;
-  max-width: 520px;
-  justify-self: end;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
-  color: #788164;
-  background: #e8ebdc;
-  border: 1px solid #dce2cb;
-  border-radius: 20px;
-  padding: 7px 11px;
-}
-.latest-event i,
 .scene-heading i {
   display: inline-block;
   width: 6px;
@@ -360,6 +390,9 @@ a:focus-visible {
     grid-template-columns: auto auto;
     column-gap: 12px;
   }
+  .alert-slot {
+    display: none;
+  }
   .ant-counts {
     gap: 8px;
   }
@@ -375,9 +408,6 @@ a:focus-visible {
   }
   .egg-count {
     padding-left: 8px;
-  }
-  .latest-event {
-    display: none;
   }
   .stats {
     gap: 10px;

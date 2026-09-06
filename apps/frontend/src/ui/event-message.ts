@@ -28,7 +28,7 @@ const incidentEnd: Record<IncidentKind, string> = {
   "rich-forage": "Богатый участок опустел.",
   "food-nearby": "Еда рядом с гнездом закончилась.",
 };
-function incidentWarning(incident: IncidentKind, seconds: number) {
+export function incidentWarning(incident: IncidentKind, seconds: number) {
   const when = `через ${Math.round(seconds)} с`;
   if (incident === "thieves") return `Разведка заметила воров ${when}. Прикрой расплод!`;
   if (incident === "boss") return `Из леса ползёт жук ${when}. Собирай всех воинов!`;
