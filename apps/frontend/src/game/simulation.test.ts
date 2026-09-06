@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
-import { cancelLastBlueprint, planBuild } from "./construction";
+import { cellKey } from "./cells";
+import { planBuild } from "./construction";
 import { queenOf } from "./model";
 import { createGame, stepGame } from "./simulation";
 import { startSpawn } from "./spawning";
@@ -10,7 +11,7 @@ it("creates independent games with unique unit ids and valid initial positions",
   const first = createGame(() => 0),
     second = createGame(() => 0.5);
   expect(new Set(first.units.map((unit) => unit.id)).size).toBe(6);
-  expect(new Set(first.units.map((unit) => `${unit.cell.x},${unit.cell.y}`)).size).toBe(6);
+  expect(new Set(first.units.map((unit) => cellKey(unit.cell))).size).toBe(6);
   expect(first.items[0]?.location).toEqual({ kind: "cell", cell: { x: 9, y: 3 } });
   expect(foodStock(first)).toBe(2);
   expect(first.units.slice(1).map((unit) => unit.cell)).not.toEqual(second.units.slice(1).map((unit) => unit.cell));
@@ -49,7 +50,7 @@ it("counts work only after arrival and frees a worker after cancellation", () =>
   expect(game.blueprints["8,6"]?.progress).toBe(0);
   advance(game, 0.1);
   expect(game.blueprints["8,6"]?.progress).toBeCloseTo(0.0025, 8);
-  cancelLastBlueprint(game);
+  delete game.blueprints["8,6"];
   advance(game, 1);
   expect(worker.job?.kind).toBe("wander");
   expect(game.colony["8,6"]).toBeUndefined();
@@ -194,16 +195,14 @@ it("rejects invalid blueprints without changing state and increments visual revi
     expect(planBuild(game, x ?? 0, y ?? 0, "corridor")).toBeTruthy();
     expect(game).toEqual(before);
   }
-  cancelLastBlueprint(game);
   expect(game.revision).toBe(0);
   expect(planBuild(game, 8, 6, "corridor")).toBeNull();
   expect(game.revision).toBe(1);
-  cancelLastBlueprint(game);
-  expect(game.revision).toBe(2);
+  delete game.blueprints["8,6"];
   addUnit(game, "worker", { x: 8, y: 5 });
   planBuild(game, 8, 6, "corridor");
   advance(game, 20);
-  expect(game.revision).toBe(4);
+  expect(game.revision).toBe(3);
 });
 it("stops on contact reached during movement, preserves a carried item there and does not credit travel as work", () => {
   const game = world();
@@ -246,7 +245,7 @@ it.each([1, 17, 73])(
       return state / 4294967296;
     };
     const game = createGame(random);
-    const initialPositions = game.units.map((unit) => `${unit.cell.x},${unit.cell.y}`);
+    const initialPositions = game.units.map((unit) => cellKey(unit.cell));
     expect(new Set(initialPositions).size).toBe(6);
     expect(game.units.filter((unit) => unit.faction === "colony")).toHaveLength(6);
     expect(game.items[0]?.kind).toBe("egg");
@@ -301,7 +300,7 @@ it.each([1, 17, 73])(
         let previous = unit.cell;
         for (const cell of unit.route) {
           expect(Math.abs(cell.x - previous.x) + Math.abs(cell.y - previous.y)).toBe(1);
-          expect(cell.y === 0 || !!game.colony[`${cell.x},${cell.y}`]).toBe(true);
+          expect(cell.y === 0 || !!game.colony[cellKey(cell)]).toBe(true);
           previous = cell;
         }
       }

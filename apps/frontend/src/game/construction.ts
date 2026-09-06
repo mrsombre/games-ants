@@ -15,12 +15,6 @@ export function planBuild(game: Game, x: number, y: number, tile: BuildTool) {
   game.revision++;
   return null;
 }
-export function cancelLastBlueprint(game: Game) {
-  const id = Object.keys(game.blueprints).at(-1);
-  if (!id) return;
-  delete game.blueprints[id];
-  game.revision++;
-}
 
 export function advanceConstruction(game: Game, seconds: number) {
   for (const [id, blueprint] of Object.entries(game.blueprints)) {
