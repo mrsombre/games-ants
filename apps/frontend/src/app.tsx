@@ -7,7 +7,7 @@ import { AntHead, FoodIcon } from "./ui/icons";
 import { useGame } from "./ui/use-game";
 
 export function App() {
-  const { host, game, tool, setTool, message, tip, error, ready, spawnAnt } = useGame();
+  const { host, game, tool, setTool, message, tip, error, ready, landscapeName, spawnAnt } = useGame();
   const { food } = game;
   const ants = game.units.filter((unit) => unit.faction === "colony" && unit.role !== "queen");
   const enemies = game.units.filter((unit) => unit.faction === "raiders");
@@ -51,7 +51,7 @@ export function App() {
                 ? "Королева погибла"
                 : enemies.length
                   ? `Атака · врагов: ${enemies.length}`
-                  : "Лесная поляна"}
+                  : landscapeName}
             </span>
             <span className="scouts-away" role="img" aria-label={`В разведке: ${scoutsAway.length}`}>
               {scoutsAway.map((scout) => (

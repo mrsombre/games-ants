@@ -22,7 +22,8 @@ export async function createScene(host: HTMLElement, onCellClick: (x: number, y:
   const tiles = new Graphics(),
     hover = new Graphics();
   const creatures = createCreatures();
-  app.stage.addChild(await createLandscape(), tiles, hover, creatures.layer);
+  const landscape = await createLandscape();
+  app.stage.addChild(landscape.layer, tiles, hover, creatures.layer);
   host.appendChild(app.canvas);
   let planned: Colony = {},
     tool: Tool = "corridor",
@@ -67,6 +68,7 @@ export async function createScene(host: HTMLElement, onCellClick: (x: number, y:
   app.canvas.setAttribute("aria-label", "Лес и подземная сетка муравейника. Выбери инструмент и нажми на клетку.");
   Object.assign(app.canvas.style, { width: "100%", height: "auto", display: "block" });
   return {
+    landscapeName: landscape.name,
     update(game: Game, nextTool: Tool, time: number) {
       currentGame = game;
       if (revision !== game.revision || tool !== nextTool) {

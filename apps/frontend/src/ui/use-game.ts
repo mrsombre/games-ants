@@ -22,6 +22,7 @@ export function useGame() {
   const [tipIndex, setTipIndex] = useState(0);
   const [error, setError] = useState(false);
   const [ready, setReady] = useState(false);
+  const [landscapeName, setLandscapeName] = useState("");
   useEffect(() => {
     if (!host.current) return;
     let disposed = false;
@@ -42,6 +43,7 @@ export function useGame() {
           result.destroy();
           return;
         }
+        setLandscapeName(result.landscapeName);
         setReady(true);
         let last = performance.now(),
           accumulator = 0,
@@ -95,7 +97,7 @@ export function useGame() {
     );
     refresh((n) => n + 1);
   }
-  return { host, game, tool, setTool, message, tip: gameplayTips[tipIndex], error, ready, spawnAnt };
+  return { host, game, tool, setTool, message, tip: gameplayTips[tipIndex], error, ready, landscapeName, spawnAnt };
 }
 
 function scoutDeliveryMessage(cargo: FoodKind) {

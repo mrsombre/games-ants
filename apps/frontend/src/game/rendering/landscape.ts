@@ -9,13 +9,17 @@ const random = (n: number) => {
   return v - Math.floor(v);
 };
 
-const forests = [summer, autumn, enchanted];
+const forests = [
+  { source: summer, name: "Лесная поляна" },
+  { source: autumn, name: "Золотистый бор" },
+  { source: enchanted, name: "Сумрачная долина" },
+] as const;
 
 export async function createLandscape() {
   const layer = new Container();
   const landscape = new Graphics();
-  const source = forests[Math.floor(Math.random() * forests.length)] ?? summer;
-  const forest = new Sprite(await Assets.load(source));
+  const design = forests[Math.floor(Math.random() * forests.length)] ?? forests[0];
+  const forest = new Sprite(await Assets.load(design.source));
   const scale = Math.max(WIDTH / forest.texture.width, HORIZON / forest.texture.height);
   forest.scale.set(scale);
   forest.position.set((WIDTH - forest.width) / 2, HORIZON - forest.height);
@@ -24,7 +28,7 @@ export async function createLandscape() {
   drawGround(landscape);
   drawEntrance(landscape);
   layer.addChild(forest, forestMask, landscape);
-  return layer;
+  return { layer, name: design.name };
 }
 function drawGround(landscape: Graphics) {
   landscape.rect(0, HORIZON, WIDTH, HEIGHT - HORIZON).fill(0x302a26);
