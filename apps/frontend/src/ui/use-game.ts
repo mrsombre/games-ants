@@ -8,7 +8,7 @@ import { SIMULATION_STEP } from "../game/model";
 import { roles } from "../game/rendering/appearance";
 import { createScene } from "../game/scene";
 import { createGame, stepGame } from "../game/simulation";
-import { startSpawn } from "../game/spawning";
+import { SPAWN_SECONDS, startSpawn } from "../game/spawning";
 import { foodStock } from "../game/storage";
 import { type HatchRole, hatchCost } from "../game/units";
 import { GAMEPLAY_TIP_INTERVAL, gameplayTips } from "./gameplay-tips";
@@ -94,7 +94,7 @@ export function useGame() {
     const started = startSpawn(game, role);
     setMessage(
       started
-        ? `${roles[role].label}: яйцо выбрано, вылупление через 10 секунд`
+        ? `${roles[role].label}: яйцо выбрано, вылупление через ${SPAWN_SECONDS} секунд`
         : !hasNestRoom(game)
           ? "В гнезде нет свободного места — построй или расширь гнездо"
           : foodStock(game) < hatchCost[role]
