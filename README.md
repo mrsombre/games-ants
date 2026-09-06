@@ -1,7 +1,7 @@
 # games-ants
 
 Браузерная игра про муравейник, вдохновлённая механиками Fallout Shelter.
-Сейчас готов только минимальный каркас: React-страница и Hono API на Cloudflare Workers.
+Frontend построен на React и PixiJS, API — на Hono и Cloudflare Workers.
 
 Production: [games-ants.warmvibes.workers.dev](https://games-ants.warmvibes.workers.dev/).
 
@@ -42,12 +42,10 @@ apps/
 └─ backend/    # Hono Worker, пока только GET /api/health
 packages/
 └─ common/     # Общие API-контракты без зависимостей от приложений
-docs/          # Концепция, сравнение движков и разработка
-specs/plans/   # Планы реализации и архив завершённых работ
+docs/          # Разработка, проектирование системы и игровые механики
 ```
 
-Подробнее: [разработка](./docs/development.md), [концепция игры](./docs/plan.md),
-[сравнение движков](./docs/engine-comparison.md).
+Полный индекс: [документация проекта](./docs/index.md).
 
 ## Публикация
 
@@ -57,6 +55,3 @@ pnpm run deploy
 
 Команда собирает frontend и Worker, затем запускает Wrangler с конфигурацией из сборки.
 Требуется авторизация Cloudflare. Проверка без публикации: `pnpm run deploy --dry-run`.
-
-Игровые механики, сохранения и автономный HTML ещё не реализованы.
-Первый деплой в Cloudflare успешно выполнен пользователем 5 сентября 2026 года.

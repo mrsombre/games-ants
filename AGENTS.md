@@ -3,7 +3,8 @@
 ## Project
 
 Browser game games-ants, inspired by Fallout Shelter, with a static frontend and a small Cloudflare
-Worker API. Game mechanics are planned in docs/plan.md. This scaffold has no Telegram integration.
+Worker API. Documentation is split into development, system design and game mechanics sections.
+This scaffold has no Telegram integration.
 
 ## Boundaries
 
@@ -24,10 +25,6 @@ Worker API. Game mechanics are planned in docs/plan.md. This scaffold has no Tel
 - Keep frontend and Worker development on one origin through @cloudflare/vite-plugin.
 - Deploy only when explicitly requested. Local development and preview are allowed.
 
-## Documentation and plans
+## Documentation
 
-- Follow docs/index.md when writing docs: Russian, OKF 0.2 frontmatter and an updated section index.
-- Implementation plans live in specs/plans/ and are free-form. Each step records files, decisions
-  and acceptance criteria so work can continue from a cold start.
-- On completion, add a verified Результат section including deviations and move the plan with
-  git mv into specs/plans/archive/ before opening a PR.
+- Follow docs/index.md when writing docs: use Russian, update the relevant section index.
