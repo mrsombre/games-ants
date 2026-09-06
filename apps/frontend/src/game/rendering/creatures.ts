@@ -7,29 +7,34 @@ import { position } from "../navigation";
 import { present, type Unit } from "../units";
 import { roles } from "./appearance";
 import { CELL, SURFACE } from "./layout";
-import { drawQueen } from "./queen";
+import { drawCrown, drawQueen } from "./queen";
 
 export function createCreatures() {
   const layer = new Container();
   const construction = new Graphics();
   const eggs = new Graphics();
   const queen = new Graphics();
+  const queenOverlay = new Graphics();
   const creatures = new Container();
-  layer.addChild(construction, eggs, queen, creatures);
+  layer.addChild(construction, eggs, queen, queenOverlay, creatures);
   const sprites = new Map<number, Graphics>();
   function renderSimulation(game: Game, time: number) {
     drawBlueprints(construction, game.blueprints);
     drawEggs(eggs, game);
     queen.clear();
+    queenOverlay.clear();
     const queenUnit = queenOf(game);
     if (queenUnit && queenUnit.hp > 0) {
       const spot = position(queenUnit);
       const x = spot.x * CELL,
         y = SURFACE + spot.y * CELL;
-      drawQueen(queen, x, y);
+      drawQueen(queen, time, queenUnit.route.length > 0);
+      queen.position.set(x + CELL / 2, y + CELL / 2 + 2);
+      queen.rotation = queenUnit.heading;
+      drawCrown(queenOverlay, x + CELL / 2, y + 12);
       if (queenUnit.hp < queenUnit.maxHp) {
-        queen.roundRect(x + 6, y + 3, 40, 3, 1).fill(0x56382d);
-        queen.roundRect(x + 6, y + 3, (40 * queenUnit.hp) / queenUnit.maxHp, 3, 1).fill(0xa9df79);
+        queenOverlay.roundRect(x + 6, y + 3, 40, 3, 1).fill(0x56382d);
+        queenOverlay.roundRect(x + 6, y + 3, (40 * queenUnit.hp) / queenUnit.maxHp, 3, 1).fill(0xa9df79);
       }
     }
     const living = game.units.filter((unit) => unit.role !== "queen");
