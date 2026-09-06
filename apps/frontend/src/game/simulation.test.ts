@@ -43,7 +43,7 @@ it("counts work only after arrival and frees a worker after cancellation", () =>
   const game = world();
   const worker = addUnit(game, "worker", { x: 8, y: 4 });
   planBuild(game, 8, 6, "corridor");
-  advance(game, 0.65);
+  advance(game, 0.95);
   expect(game.blueprints["8,6"]?.progress).toBe(0);
   advance(game, 0.1);
   expect(game.blueprints["8,6"]?.progress).toBeCloseTo(0.0025, 8);
@@ -153,7 +153,7 @@ it("steals a reachable egg, escapes through the entrance, cancels hatching and e
   stepGame(game);
   expect(item.location).toEqual({ kind: "carried", unitId: thief.id });
   expect(game.spawns).toEqual([]);
-  const events = advance(game, 12);
+  const events = advance(game, 20);
   expect(game.units).not.toContain(thief);
   expect(game.items.some((entry) => entry.id === item.id)).toBe(false);
   expect(events).toContainEqual({ kind: "attack-ended" });

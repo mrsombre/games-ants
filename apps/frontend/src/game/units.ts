@@ -24,9 +24,9 @@ export type Unit = {
 };
 type Traits = { hp: number; bite: number; speed: number; jobs: readonly JobKind[] };
 export const traits: Record<Role, Traits> = {
-  worker: { hp: 8, bite: 1, speed: 1.5, jobs: ["build", "haul", "guard", "wander", "leave", "attack"] },
-  scout: { hp: 10, bite: 1, speed: 2.4, jobs: ["forage", "haul", "attack", "leave"] },
-  warrior: { hp: 24, bite: 4, speed: 1.5, jobs: ["attack", "wander", "leave"] },
+  worker: { hp: 8, bite: 1, speed: 1, jobs: ["build", "haul", "guard", "wander", "leave", "attack"] },
+  scout: { hp: 10, bite: 1, speed: 3, jobs: ["forage", "haul", "attack", "leave"] },
+  warrior: { hp: 24, bite: 4, speed: 2, jobs: ["attack", "wander", "leave"] },
   queen: { hp: 24, bite: 4, speed: 0, jobs: [] },
 };
 export const hatchCost: Record<HatchRole, number> = { worker: 1, scout: 2, warrior: 3 };

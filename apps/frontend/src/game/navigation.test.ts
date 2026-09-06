@@ -53,7 +53,7 @@ it("continues an in-flight edge when redirected, and stops at an occupied cell w
   const nav = new Navigation(initialColony);
   const unit = createUnit(1, "scout", "colony", { x: 8, y: 2 });
   setRoute(unit, [{ x: 8, y: 3 }]);
-  move(unit, 0.25);
+  move(unit, 0.2);
   expect(unit.travel).toBeCloseTo(0.6, 8);
   setRoute(unit, nav.from(unit, { x: 8, y: 1 }) ?? []);
   expect(unit.route).toEqual([
@@ -107,7 +107,7 @@ it("walls a room off from a vertical corridor in both directions, but never open
 it("interpolates vertical travel and resets partial travel when a route is explicitly cleared", () => {
   const unit = createUnit(1, "worker", "colony", { x: 8, y: 2 });
   setRoute(unit, [{ x: 8, y: 3 }]);
-  move(unit, 0.2);
+  move(unit, 0.3);
   expect(position(unit).y).toBeCloseTo(2.3, 8);
   expect(unit.heading).toBeCloseTo(Math.PI / 2, 8);
   setRoute(unit, []);

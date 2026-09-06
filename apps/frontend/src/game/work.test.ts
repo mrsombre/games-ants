@@ -93,7 +93,7 @@ it("interrupts an active wander at the current edge and resumes its remaining di
   advance(game, 0.05);
   expect(worker.job?.kind).toBe("build");
   expect(worker.route[0]).toEqual({ x: 8, y: 2 });
-  expect(worker.travel).toBeCloseTo(0.575, 8);
+  expect(worker.travel).toBeCloseTo(0.55, 8);
 });
 it("delivers only the carried food, preserving other items and living units", () => {
   const game = world();
