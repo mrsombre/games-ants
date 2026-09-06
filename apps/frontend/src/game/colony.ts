@@ -4,7 +4,6 @@ export const MAX_ROOM_WIDTH = 4;
 export type RoomTile = "nest" | "storage";
 export type Tile = "corridor" | RoomTile;
 export type BuildTool = Tile;
-export type Tool = BuildTool | "demolish";
 export type Colony = Record<string, Tile>;
 export const isRoom = (tile: Tile | undefined): tile is RoomTile => tile === "nest" || tile === "storage";
 export const initialColony: Colony = {

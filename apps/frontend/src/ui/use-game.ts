@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import type { Tool } from "../game/colony";
-import { planBuild } from "../game/construction";
-import { demolish } from "../game/demolition";
 import { type FoodKind, foodValue } from "../game/items";
 import { SIMULATION_STEP } from "../game/model";
 import { roles } from "../game/rendering/appearance";
 import { createScene } from "../game/scene";
 import { createGame, stepGame } from "../game/simulation";
 import { SPAWN_SECONDS, startSpawn } from "../game/spawning";
+import { applyTool, type Tool } from "../game/tools";
 import type { SpawnRole } from "../game/units";
 import { GAMEPLAY_TIP_INTERVAL, gameplayTips } from "./gameplay-tips";
 import { spawnBlockLabel } from "./spawn-block";
@@ -31,11 +29,8 @@ export function useGame() {
     let frame = 0;
     void createScene(host.current, (x, y) => {
       const selected = currentTool.current;
-      const reason = selected === "demolish" ? demolish(game, x, y) : planBuild(game, x, y, selected);
-      setMessage(
-        reason ??
-          (selected === "demolish" ? "Элемент сломан" : "Чертёж поставлен. Рабочие строят, когда к нему готов проход."),
-      );
+      const reason = applyTool(game, selected, x, y);
+      setMessage(reason ?? toolSuccess[selected]);
       refresh((n) => n + 1);
     })
       .then((result) => {
@@ -98,6 +93,13 @@ export function useGame() {
   }
   return { host, game, tool, setTool, message, tip: gameplayTips[tipIndex], error, ready, landscapeName, spawnAnt };
 }
+
+const toolSuccess: Record<Tool, string> = {
+  corridor: "Чертёж поставлен. Рабочие строят, когда к нему готов проход.",
+  nest: "Чертёж поставлен. Рабочие строят, когда к нему готов проход.",
+  storage: "Чертёж поставлен. Рабочие строят, когда к нему готов проход.",
+  demolish: "Элемент сломан",
+};
 
 const foodLabel: Record<FoodKind, string> = {
   apple: "зелёное яблоко",

@@ -1,8 +1,9 @@
-import type { BuildTool, Tool } from "../game/colony";
+import type { BuildTool } from "../game/colony";
 import { buildSeconds } from "../game/construction";
 import { roles } from "../game/rendering/appearance";
 import type { SpawnBlock } from "../game/spawning";
 import { STORAGE_SLOTS } from "../game/storage";
+import type { Tool } from "../game/tools";
 import { type SpawnRole, spawnCost } from "../game/units";
 import { AntHead, FoodIcon } from "./icons";
 import { spawnBlockLabel } from "./spawn-block";

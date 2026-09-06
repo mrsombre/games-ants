@@ -1,13 +1,13 @@
 import { Application, Graphics } from "pixi.js";
 import { type Cell, isCell } from "./cells";
-import { type Colony, placementError, type Tool } from "./colony";
+import type { Colony } from "./colony";
 import { plannedColony } from "./construction";
-import { demolitionError } from "./demolition";
 import type { Game } from "./model";
 import { drawColony } from "./rendering/colony";
 import { createCreatures } from "./rendering/creatures";
 import { createLandscape } from "./rendering/landscape";
 import { CELL, HEIGHT, SURFACE, screenCell, WIDTH } from "./rendering/layout";
+import { type Tool, toolError } from "./tools";
 
 export async function createScene(host: HTMLElement, onCellClick: (x: number, y: number) => void) {
   const app = new Application();
@@ -34,9 +34,8 @@ export async function createScene(host: HTMLElement, onCellClick: (x: number, y:
     hover.clear();
     if (!active) return;
     const { x, y } = active;
-    if (!isCell(x, y)) return;
-    const valid =
-      tool === "demolish" ? !!currentGame && !demolitionError(currentGame, x, y) : !placementError(planned, x, y, tool);
+    if (!isCell(x, y) || !currentGame) return;
+    const valid = !toolError(currentGame, tool, x, y);
     hover
       .roundRect(x * CELL + 3, SURFACE + y * CELL + 3, CELL - 6, CELL - 6, 7)
       .fill({ color: valid ? 0xd8dd8d : 0xd98470, alpha: 0.28 })

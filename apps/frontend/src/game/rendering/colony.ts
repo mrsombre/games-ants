@@ -1,7 +1,8 @@
 import type { Graphics } from "pixi.js";
 import { COLS, ENTRANCE, key, ROWS } from "../cells";
-import { type Colony, connected, placementError, type RoomTile, roomSpan, type Tool } from "../colony";
+import { type Colony, connected, placementError, type RoomTile, roomSpan } from "../colony";
 import { STORAGE_SLOTS } from "../storage";
+import type { Tool } from "../tools";
 import { CELL, SURFACE } from "./layout";
 
 const passages = [
