@@ -68,6 +68,7 @@ export function createCreatures() {
 function drawEggs(g: Graphics, game: Game) {
   g.clear();
   const piles = new Map<string, number>();
+  const spawnByEgg = new Map(game.spawns.map((entry) => [entry.eggId, entry]));
   for (const egg of [...game.items].sort((a, b) => a.id - b.id)) {
     if (egg.location.kind !== "cell") continue;
     const p = egg.location.cell;
@@ -86,7 +87,7 @@ function drawEggs(g: Graphics, game: Game) {
         .fill(0xf5e8bc)
         .stroke({ color: 0xc5ad75, width: 1 });
     }
-    const spawn = game.spawns.find((entry) => entry.eggId === egg.id);
+    const spawn = spawnByEgg.get(egg.id);
     if (spawn) {
       g.roundRect(x - 16, y + 14, 32, 4, 1).fill(0x172c39);
       g.roundRect(x - 16, y + 14, 32 * spawn.progress, 4, 1).fill(roles[spawn.role].color);
