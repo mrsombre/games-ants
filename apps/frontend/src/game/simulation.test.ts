@@ -400,3 +400,13 @@ it("skips a dead builder and safely advances a world without a queen", () => {
   expect(game.units).toEqual([]);
   expect(game.items).toEqual([]);
 });
+
+it("leaves a unit already in contact out of the auction", () => {
+  const game = world();
+  const item = egg(game, { x: 9, y: 3 });
+  const engaged = addUnit(game, "worker", { x: 8, y: 3 }, "raiders");
+  const free = addUnit(game, "worker", { x: 8, y: 5 }, "raiders");
+  addUnit(game, "warrior", engaged.cell);
+  stepGame(game);
+  expect(free.job).toMatchObject({ kind: "haul", itemId: item.id });
+});
