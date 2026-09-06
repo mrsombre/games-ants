@@ -1,4 +1,7 @@
-import { Container, Graphics } from "pixi.js";
+import { Assets, Container, Graphics, Sprite } from "pixi.js";
+import autumn from "./forests/autumn.svg?url";
+import enchanted from "./forests/enchanted.svg?url";
+import summer from "./forests/summer.svg?url";
 import { CELL, GROUND, HEIGHT, HORIZON, WIDTH } from "./layout";
 
 const random = (n: number) => {
@@ -6,53 +9,22 @@ const random = (n: number) => {
   return v - Math.floor(v);
 };
 
-export function createLandscape() {
+const forests = [summer, autumn, enchanted];
+
+export async function createLandscape() {
   const layer = new Container();
   const landscape = new Graphics();
-  drawForest(landscape);
+  const source = forests[Math.floor(Math.random() * forests.length)] ?? summer;
+  const forest = new Sprite(await Assets.load(source));
+  const scale = Math.max(WIDTH / forest.texture.width, HORIZON / forest.texture.height);
+  forest.scale.set(scale);
+  forest.position.set((WIDTH - forest.width) / 2, HORIZON - forest.height);
+  const forestMask = new Graphics().rect(0, 0, WIDTH, HORIZON).fill(0xffffff);
+  forest.mask = forestMask;
   drawGround(landscape);
   drawEntrance(landscape);
-  layer.addChild(landscape);
+  layer.addChild(forest, forestMask, landscape);
   return layer;
-}
-function drawForest(landscape: Graphics) {
-  landscape.rect(0, 0, WIDTH, HORIZON).fill(0xb4c6b6);
-  landscape.circle(620, 64, 41).fill({ color: 0xf5eed3, alpha: 0.8 });
-  for (let layer = 0; layer < 3; layer++) {
-    for (let i = 0; i < 16; i++) {
-      const x = i * 72 + random(i + layer * 20) * 55 - 30;
-      const y = 38 + random(i + 80 * layer) * 100;
-      const color = [0x8fae9f, 0x6f9483, 0x4d7664][layer];
-      landscape.rect(x - 4 - layer, y, 9 + layer * 3, HORIZON - y).fill(color);
-      landscape.ellipse(x, y + 12, 38 + layer * 8, 72).fill(color);
-      landscape.ellipse(x - 24, y + 35, 27, 48).fill(color);
-      landscape.ellipse(x + 24, y + 33, 28, 47).fill(color);
-    }
-  }
-  landscape
-    .moveTo(0, HORIZON - 25)
-    .bezierCurveTo(180, HORIZON - 70, 300, HORIZON - 15, 460, HORIZON - 35)
-    .bezierCurveTo(620, HORIZON - 55, 820, HORIZON - 55, WIDTH, HORIZON - 31)
-    .lineTo(WIDTH, HORIZON + 10)
-    .lineTo(0, HORIZON + 10)
-    .closePath()
-    .fill(0x365b43);
-  for (const x of [70, 850]) {
-    landscape
-      .moveTo(x - 20, HORIZON)
-      .lineTo(x - 10, 20)
-      .lineTo(x + 14, -10)
-      .lineTo(x + 21, HORIZON)
-      .closePath()
-      .fill(0x344e3b);
-    landscape
-      .moveTo(x, 116)
-      .lineTo(x - 45, 55)
-      .moveTo(x, 80)
-      .lineTo(x + 45, 25)
-      .stroke({ color: 0x344e3b, width: 12 });
-    landscape.ellipse(x, 6, 132, 60).fill(0x2d533e);
-  }
 }
 function drawGround(landscape: Graphics) {
   landscape.rect(0, HORIZON, WIDTH, HEIGHT - HORIZON).fill(0x302a26);

@@ -22,7 +22,7 @@ export async function createScene(host: HTMLElement, onCellClick: (x: number, y:
   const tiles = new Graphics(),
     hover = new Graphics();
   const creatures = createCreatures();
-  app.stage.addChild(createLandscape(), tiles, hover, creatures.layer);
+  app.stage.addChild(await createLandscape(), tiles, hover, creatures.layer);
   host.appendChild(app.canvas);
   let planned: Colony = {},
     tool: Tool = "corridor",
