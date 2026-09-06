@@ -6,6 +6,7 @@ import { advanceEggs } from "./eggs";
 import { dropCargo } from "./items";
 import { type Game, type GameEvent, queenOf, SIMULATION_STEP } from "./model";
 import { move, Navigation } from "./navigation";
+import { advanceNesting } from "./nesting";
 import { advanceAttack, attackDelay, MAX_ENEMIES } from "./raids";
 import { advanceSpawns } from "./spawning";
 import { assignTasks } from "./tasks";
@@ -41,6 +42,7 @@ export function createGame(random: () => number = Math.random): Game {
     maxEnemies: MAX_ENEMIES,
     raidsStarted: 0,
     eggTimer: 0,
+    nestTimer: 0,
     nextItemId: 2,
     nextUnitId: 6,
     food: 2,
@@ -90,6 +92,7 @@ export function stepGame(game: Game, seconds = SIMULATION_STEP, random: () => nu
   prepareJobs(game, seconds, navigation);
   const before = contacts(game.units);
   const engaged = new Set(before.keys());
+  advanceNesting(game, seconds, navigation, engaged);
   assignTasks(game, "colony", navigation, engaged, random);
   assignTasks(game, "raiders", navigation, engaged, random);
   const moved = moveUnits(game.units, seconds);

@@ -1,8 +1,9 @@
-import { cellKey, ENTRANCE, isCell, key, neighbors, sameCell } from "./cells";
+import { cellKey, ENTRANCE, isCell, key, neighbors } from "./cells";
 import { type Colony, connected, isRoom, roomSpan } from "./colony";
 import { plannedColony } from "./construction";
 import { roomCellOccupied } from "./eggs";
-import { type Game, queenOf } from "./model";
+import type { Game } from "./model";
+import { nestCells } from "./nesting";
 import { interruptJob } from "./work";
 
 function staysConnected(colony: Colony, removed: string) {
@@ -29,8 +30,7 @@ export function demolitionError(game: Game, x: number, y: number): string | null
   if (!tile) return "Здесь нечего ломать";
   if (y <= 1) return "Вход в муравейник нельзя сломать";
   if (roomCellOccupied(game, id)) return "Сначала освободи клетку от яиц или дождись доставки";
-  const queen = queenOf(game);
-  if (queen && sameCell(queen.cell, { x, y })) return "Клетку с маткой нельзя сломать";
+  if (nestCells(game).some((cell) => cellKey(cell) === id)) return "Комнату матки нельзя сломать";
   if (isRoom(tile)) {
     const span = roomSpan(colony, x, y);
     if (x !== span.left && x !== span.right) return "Комнату можно ломать только с края";

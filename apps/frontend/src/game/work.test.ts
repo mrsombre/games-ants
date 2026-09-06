@@ -157,7 +157,9 @@ it("keeps a scout's food until it reaches home and can recover when an expeditio
   performJob(game, scout, 0.05, new Navigation(game.colony), () => 0.5, []);
   expect(game.food).toBe(2);
   expect(game.items).toHaveLength(1);
+  expect(scout.route.at(-1)).toEqual(HOME);
   scout.cell = HOME;
+  scout.route = [];
   game.items = [];
   performJob(game, scout, 0.05, new Navigation(game.colony), () => 0.5, []);
   expect(game.food).toBe(2);

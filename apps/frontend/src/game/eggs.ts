@@ -15,10 +15,19 @@ export function nurseryCells(game: Game) {
     ? neighbors(queen.cell).filter((cell) => cell.y === queen.cell.y && game.colony[cellKey(cell)] === "room")
     : [];
 }
-export function advanceEggs(game: Game, seconds: number) {
+function freeNursery(game: Game) {
+  return nurseryCells(game).filter((cell) => !roomCellOccupied(game, cellKey(cell)));
+}
+export function settled(game: Game) {
   const queen = queenOf(game);
-  if (!queen || queen.hp <= 0) return;
-  const available = nurseryCells(game).filter((cell) => !roomCellOccupied(game, cellKey(cell)));
+  return !!queen && queen.hp > 0 && !queen.job && !queen.route.length && game.colony[cellKey(queen.cell)] === "room";
+}
+export function layingInProgress(game: Game) {
+  return game.eggTimer > EPSILON && settled(game) && freeNursery(game).length > 0;
+}
+export function advanceEggs(game: Game, seconds: number) {
+  if (!settled(game)) return;
+  const available = freeNursery(game);
   if (!available.length) return;
   game.eggTimer += seconds;
   for (const cell of available) {

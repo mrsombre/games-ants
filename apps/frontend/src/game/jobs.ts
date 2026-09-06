@@ -7,5 +7,6 @@ export type Job =
   | { kind: "attack"; targetId: number }
   | { kind: "guard"; destination: Cell }
   | { kind: "wander"; destination: Cell }
-  | { kind: "leave"; destination: Cell };
+  | { kind: "leave"; destination: Cell }
+  | { kind: "nest"; destination: Cell };
 export type JobKind = Job["kind"];

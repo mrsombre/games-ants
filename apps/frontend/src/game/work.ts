@@ -1,6 +1,6 @@
-import { HOME, point, sameCell } from "./cells";
+import { point, sameCell } from "./cells";
 import { carriedItem, dropCargo, foodValue, pickUp } from "./items";
-import { EPSILON, type Game, type GameEvent } from "./model";
+import { EPSILON, type Game, type GameEvent, homeOf } from "./model";
 import { type Navigation, setRoute } from "./navigation";
 import { jobValid, WANDER_MAX_SECONDS, WANDER_MIN_SECONDS } from "./tasks";
 import type { Unit } from "./units";
@@ -83,7 +83,7 @@ export function performJob(
       } else if (job.phase === "away") {
         job.remaining = Math.max(0, job.remaining - seconds);
         if (job.remaining > EPSILON) return;
-        const route = navigation.from(unit, HOME);
+        const route = navigation.from(unit, homeOf(game));
         if (!route) return;
         const roll = random();
         game.items.push({
@@ -94,9 +94,13 @@ export function performJob(
         });
         job.phase = "returning";
         setRoute(unit, route);
-      } else if (sameCell(unit.cell, HOME)) {
+      } else if (sameCell(unit.cell, homeOf(game))) {
         depositFood(game, unit, events);
         unit.job = null;
+      } else {
+        const route = navigation.from(unit, homeOf(game));
+        if (route) setRoute(unit, route);
+        else interruptJob(game, unit);
       }
       return;
     case "wander":
@@ -105,6 +109,11 @@ export function performJob(
       return;
     case "leave":
       if (sameCell(unit.cell, job.destination)) game.units = game.units.filter((entry) => entry.id !== unit.id);
+      return;
+    case "nest":
+      if (!sameCell(unit.cell, job.destination)) return;
+      unit.job = null;
+      game.nestTimer = 0;
       return;
     case "guard":
     case "attack":

@@ -1,3 +1,4 @@
+import { type Cell, HOME } from "./cells";
 import type { Colony } from "./colony";
 import type { Blueprint } from "./construction";
 import type { FoodKind, Item } from "./items";
@@ -19,6 +20,7 @@ export type Game = {
   maxEnemies: number;
   raidsStarted: number;
   eggTimer: number;
+  nestTimer: number;
   nextItemId: number;
   nextUnitId: number;
   food: number;
@@ -28,3 +30,4 @@ export type Game = {
 export const SIMULATION_STEP = 0.05;
 export const EPSILON = 1e-9;
 export const queenOf = (game: Game) => game.units.find((unit) => unit.faction === "colony" && unit.role === "queen");
+export const homeOf = (game: Game): Cell => queenOf(game)?.cell ?? HOME;

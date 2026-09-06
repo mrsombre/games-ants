@@ -11,14 +11,13 @@ describe("demolition", () => {
     for (const [x, y] of [
       [6, 2],
       [7, 2],
-      [11, 3],
       [8, 5],
       [8, 4],
     ] as const) {
       expect(demolish(game, x, y)).toBeNull();
       expect(game.colony[key(x, y)]).toBeUndefined();
     }
-    expect(game.revision).toBe(5);
+    expect(game.revision).toBe(4);
   });
   it("protects the entrance, queen, room interiors and corridor junctions", () => {
     const game = createGame();
@@ -99,11 +98,19 @@ it("protects cargo and destination reservations even on an otherwise removable r
   worker.hp = 0;
   expect(demolish(game, 6, 2)).toBeNull();
 });
-it("protects the queen when her cell is a removable room edge", () => {
+it("protects the whole room of the queen and the room she is moving to", () => {
   const game = createGame(() => 0.5);
   game.items = [];
+  expect(demolish(game, 11, 3)).toMatch(/матки/);
   delete game.colony["11,3"];
-  expect(demolish(game, 10, 3)).toMatch(/маткой/);
+  expect(demolish(game, 10, 3)).toMatch(/матки/);
+  const queen = game.units[0];
+  if (!queen) throw new Error("queen");
+  queen.cell = { x: 8, y: 3 };
+  queen.job = { kind: "nest", destination: { x: 6, y: 2 } };
+  expect(demolish(game, 8, 3)).toMatch(/матки/);
+  expect(demolish(game, 7, 2)).toMatch(/матки/);
+  expect(demolish(game, 10, 3)).toBeNull();
 });
 it("rejects an interior room cell even when a second corridor keeps both sides reachable", () => {
   const game = createGame(() => 0.5);

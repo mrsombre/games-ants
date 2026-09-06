@@ -1,5 +1,5 @@
 import { Container, Graphics } from "pixi.js";
-import { HOME, point } from "../cells";
+import { point } from "../cells";
 import { EGG_SECONDS } from "../eggs";
 import type { FoodKind } from "../items";
 import { type Game, queenOf } from "../model";
@@ -23,8 +23,9 @@ export function createCreatures() {
     queen.clear();
     const queenUnit = queenOf(game);
     if (queenUnit && queenUnit.hp > 0) {
-      const x = HOME.x * CELL,
-        y = SURFACE + HOME.y * CELL;
+      const spot = position(queenUnit);
+      const x = spot.x * CELL,
+        y = SURFACE + spot.y * CELL;
       drawQueen(queen, x, y);
       if (queenUnit.hp < queenUnit.maxHp) {
         queen.roundRect(x + 6, y + 3, 40, 3, 1).fill(0x56382d);
@@ -82,9 +83,11 @@ function drawEggs(g: Graphics, game: Game) {
       g.roundRect(x - 16, y + 14, 32 * spawn.progress, 4, 1).fill(roles[spawn.role].color);
     }
   }
-  if ((queenOf(game)?.hp ?? 0) <= 0) return;
-  const x = HOME.x * CELL + 10;
-  const y = SURFACE + HOME.y * CELL + 43;
+  const queen = queenOf(game);
+  if (!queen || queen.hp <= 0) return;
+  const spot = position(queen);
+  const x = spot.x * CELL + 10;
+  const y = SURFACE + spot.y * CELL + 43;
   g.roundRect(x, y, CELL - 20, 3, 1).fill(0x695034);
   const progress = (game.eggTimer / EGG_SECONDS) * (CELL - 20);
   if (progress > 0) g.roundRect(x, y, progress, 3, 1).fill(0xf5e8bc);

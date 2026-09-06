@@ -1,9 +1,9 @@
-import { type Cell, COLS, cellKey, ENTRANCE, HOME, neighbors, point, sameCell } from "./cells";
+import { type Cell, COLS, cellKey, ENTRANCE, neighbors, point, sameCell } from "./cells";
 import { connected } from "./colony";
 import { nurseryCells, storageCells } from "./eggs";
 import { canCarry, itemReserved } from "./items";
 import type { Job } from "./jobs";
-import type { Game } from "./model";
+import { type Game, homeOf } from "./model";
 import { type Navigation, setRoute } from "./navigation";
 import { type Faction, present, traits, type Unit } from "./units";
 
@@ -22,7 +22,7 @@ function availableOffers(game: Game, faction: Faction, navigation: Navigation, r
     offers.push(offer({ kind: "attack", targetId: enemy.id }, enemy.cell, faction === "colony" ? 200 : 100));
   if (faction === "colony") {
     if (enemies.length) {
-      for (const cell of [ENTRANCE, ...(navigation.route(ENTRANCE, HOME) ?? [])]) {
+      for (const cell of [ENTRANCE, ...(navigation.route(ENTRANCE, homeOf(game)) ?? [])]) {
         if (game.colony[cellKey(cell)] === "corridor")
           offers.push(offer({ kind: "guard", destination: cell }, cell, 190));
       }
@@ -58,7 +58,7 @@ function availableOffers(game: Game, faction: Faction, navigation: Navigation, r
       faction === "raiders"
         ? [{ cell: { x: -1, y: 0 }, distance: 0 }]
         : item.kind === "food"
-          ? [{ cell: HOME, distance: 0 }]
+          ? [{ cell: homeOf(game), distance: 0 }]
           : storage;
     for (const { cell, distance } of destinations) {
       if (!navigation.route(source, cell)) continue;
@@ -173,5 +173,7 @@ export function jobValid(game: Game, unit: Unit) {
       return true;
     case "wander":
       return job.destination.y === 0 || !!game.colony[cellKey(job.destination)];
+    case "nest":
+      return game.colony[cellKey(job.destination)] === "room";
   }
 }
