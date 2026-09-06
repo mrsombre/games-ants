@@ -1,83 +1,86 @@
-import { type Colony, connected, key, neighbors, type Point } from "./colony";
-import { type Creature, ENTRANCE, enemyTraits, type Game, roles, SURFACE_EXIT } from "./model";
+import { type Cell, COLS, cellKey, ENTRANCE, neighbors, sameCell } from "./cells";
+import { type Colony, connected } from "./colony";
+import { EPSILON } from "./model";
+import type { Unit } from "./units";
 
-// Only completed cells are traversable; rooms connect to rooms horizontally.
-export function routeTo(colony: Colony, from: Point, to: Point): Point[] | null {
-  const start = key(from.x, from.y),
-    end = key(to.x, to.y);
-  if (!colony[start] || !colony[end]) return null;
-  const queue = [from];
-  const previous = new Map<string, Point | null>([[start, null]]);
-  for (const current of queue) {
-    if (key(current.x, current.y) === end) {
-      const result: Point[] = [];
-      let cursor = current;
-      let parent = previous.get(key(cursor.x, cursor.y));
-      while (parent) {
-        result.unshift(cursor);
-        cursor = parent;
-        parent = previous.get(key(cursor.x, cursor.y));
-      }
-      return result;
-    }
-    for (const next of neighbors(current)) {
-      const id = key(next.x, next.y);
-      if (!previous.has(id) && connected(colony[key(current.x, current.y)], colony[id], next.y === current.y)) {
-        previous.set(id, current);
-        queue.push(next);
-      }
-    }
+type Tree = Map<string, Cell | null>;
+export class Navigation {
+  private readonly trees = new Map<string, Tree>();
+  constructor(private readonly colony: Colony) {}
+
+  private walkable(cell: Cell) {
+    return cell.y === 0 ? Number.isInteger(cell.x) && cell.x >= -1 && cell.x <= COLS : !!this.colony[cellKey(cell)];
   }
-  return null;
-}
-export function move(ant: Creature, seconds: number) {
-  let distance = seconds * (ant.role === "enemy" ? enemyTraits : roles[ant.role]).speed;
-  for (let next = ant.route[0]; next && distance > 0; next = ant.route[0]) {
-    const dx = next.x - ant.x,
-      dy = next.y - ant.y;
-    const length = Math.hypot(dx, dy);
-    ant.heading = Math.atan2(dy, dx);
-    if (length <= distance) {
-      ant.x = next.x;
-      ant.y = next.y;
-      ant.route.shift();
-      distance -= length;
-    } else {
-      ant.x += (dx / length) * distance;
-      ant.y += (dy / length) * distance;
-      distance = 0;
+  private adjacent(from: Cell, to: Cell) {
+    if (!this.walkable(to)) return false;
+    if (from.y === 0 || to.y === 0) {
+      return from.y === to.y || from.x === ENTRANCE.x;
     }
+    return connected(this.colony[cellKey(from)], this.colony[cellKey(to)], from.y === to.y);
+  }
+  private tree(from: Cell) {
+    const start = cellKey(from);
+    const cached = this.trees.get(start);
+    if (cached) return cached;
+    const previous: Tree = new Map([[start, null]]);
+    const queue = [from];
+    for (const current of queue) {
+      for (const next of neighbors(current)) {
+        const id = cellKey(next);
+        if (!previous.has(id) && this.adjacent(current, next)) {
+          previous.set(id, current);
+          queue.push(next);
+        }
+      }
+    }
+    this.trees.set(start, previous);
+    return previous;
+  }
+  route(from: Cell, to: Cell): Cell[] | null {
+    if (!this.walkable(from) || !this.walkable(to)) return null;
+    const previous = this.tree(from);
+    if (!previous.has(cellKey(to))) return null;
+    const route: Cell[] = [];
+    let cursor = to;
+    for (let parent = previous.get(cellKey(cursor)); parent; parent = previous.get(cellKey(cursor))) {
+      route.push(cursor);
+      cursor = parent;
+    }
+    return route.reverse();
+  }
+  from(unit: Unit, target: Cell) {
+    const next = unit.travel > 0 ? unit.route[0] : undefined;
+    const route = this.route(next ?? unit.cell, target);
+    return route && (next ? [next, ...route] : route);
   }
 }
-
-export function path(game: Game, from: Point, to: Point, avoidEnemies = false) {
-  const surfaceFrom = from.y < 0;
-  const surfaceTo = to.y < 0;
-  if (surfaceFrom && surfaceTo) return [to];
-  const colony = avoidEnemies
-    ? Object.fromEntries(
-        Object.entries(game.colony).filter(
-          ([id]) => !game.enemies.some((enemy) => key(Math.round(enemy.x), Math.round(enemy.y)) === id),
-        ),
-      )
-    : game.colony;
-  const route = routeTo(colony, surfaceFrom ? ENTRANCE : from, surfaceTo ? ENTRANCE : to);
-  return (
-    route && [...(surfaceFrom ? [SURFACE_EXIT, ENTRANCE] : []), ...route, ...(surfaceTo ? [SURFACE_EXIT, to] : [])]
-  );
+export function setRoute(unit: Unit, route: Cell[]) {
+  if (!unit.route[0] || !route[0] || !sameCell(unit.route[0], route[0])) unit.travel = 0;
+  unit.route = route;
 }
-
-export function redirect(game: Game, creature: Creature, target: Point, avoidEnemies = false) {
-  const next = creature.route[0];
-  const inTransit =
-    next &&
-    (creature.x !== Math.round(creature.x) || creature.y !== Math.round(creature.y)) &&
-    creature.y !== SURFACE_EXIT.y;
-  const origin = inTransit
-    ? next
-    : creature.y < 0
-      ? creature
-      : { x: Math.round(creature.x), y: Math.round(creature.y) };
-  const route = path(game, origin, target, avoidEnemies);
-  creature.route = route ? [...(inTransit ? [next] : []), ...route] : inTransit ? [next] : [];
+export function move(unit: Unit, seconds: number, stop: (unit: Unit) => boolean = () => false) {
+  let distance = seconds * unit.speed;
+  while (unit.route[0] && distance > EPSILON && !stop(unit)) {
+    const next = unit.route[0];
+    const remaining = 1 - unit.travel;
+    unit.heading = Math.atan2(next.y - unit.cell.y, next.x - unit.cell.x);
+    if (distance + EPSILON < remaining) {
+      unit.travel += distance;
+      return;
+    }
+    unit.cell = next;
+    unit.route.shift();
+    unit.travel = 0;
+    distance -= remaining;
+  }
+}
+export type Position = Readonly<{ x: number; y: number }>;
+export function position(unit: Unit): Position {
+  const next = unit.route[0];
+  return next
+    ? {
+        x: unit.cell.x + (next.x - unit.cell.x) * unit.travel,
+        y: unit.cell.y + (next.y - unit.cell.y) * unit.travel,
+      }
+    : unit.cell;
 }

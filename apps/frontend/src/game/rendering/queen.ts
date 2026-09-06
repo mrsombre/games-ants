@@ -1,7 +1,6 @@
 import type { Graphics } from "pixi.js";
 
 export function drawQueen(g: Graphics, px: number, py: number) {
-  // Three jointed legs on each side of the thorax, visible in a slight top view.
   for (const side of [-1, 1]) {
     for (let leg = 0; leg < 3; leg++) {
       g.moveTo(px + 26 + leg * 2, py + 28)

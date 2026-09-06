@@ -1,11 +1,13 @@
-import { type Colony, connected, isCell, isRoom, key, neighbors, roomSpan } from "./colony";
+import { cellKey, ENTRANCE, isCell, key, neighbors, sameCell } from "./cells";
+import { type Colony, connected, isRoom, roomSpan } from "./colony";
 import { plannedColony } from "./construction";
 import { roomCellOccupied } from "./eggs";
-import { ENTRANCE, type Game } from "./model";
+import { type Game, queenOf } from "./model";
+import { interruptJob } from "./work";
 
 function staysConnected(colony: Colony, removed: string) {
   const start = key(ENTRANCE.x, ENTRANCE.y);
-  const visited = new Set([start]);
+  const visited = new Set<string>([start]);
   const queue = [ENTRANCE];
   for (const current of queue) {
     for (const next of neighbors(current)) {
@@ -25,9 +27,10 @@ export function demolitionError(game: Game, x: number, y: number): string | null
   const id = key(x, y);
   const tile = colony[id];
   if (!tile) return "Здесь нечего ломать";
-  if (y === 0) return "Вход в муравейник нельзя сломать";
+  if (y <= 1) return "Вход в муравейник нельзя сломать";
   if (roomCellOccupied(game, id)) return "Сначала освободи клетку от яиц или дождись доставки";
-  if (tile === "queen") return "Клетку с маткой нельзя сломать";
+  const queen = queenOf(game);
+  if (queen && sameCell(queen.cell, { x, y })) return "Клетку с маткой нельзя сломать";
   if (isRoom(tile)) {
     const span = roomSpan(colony, x, y);
     if (x !== span.left && x !== span.right) return "Комнату можно ломать только с края";
@@ -48,24 +51,12 @@ export function demolish(game: Game, x: number, y: number) {
   const retreat = neighbors({ x, y }).find((p) => connected(tile, game.colony[key(p.x, p.y)], p.y === y));
   delete game.colony[id];
   delete game.blueprints[id];
-  for (const ant of [...game.ants, ...game.enemies]) {
-    const next = ant.route[0];
-    const occupiesCell = key(Math.round(ant.x), Math.round(ant.y)) === id;
-    const leavesCell = next && key(next.x - Math.sign(next.x - ant.x), next.y - Math.sign(next.y - ant.y)) === id;
-    if (retreat && (occupiesCell || leavesCell || (next && key(next.x, next.y) === id))) {
-      ant.x = retreat.x;
-      ant.y = retreat.y;
-      ant.route = [];
-    } else {
-      const index = ant.route.findIndex((p) => key(p.x, p.y) === id);
-      if (index >= 0) ant.route = ant.route.slice(0, index);
-    }
-    if (ant.role === "worker") {
-      if (ant.task?.kind === "build") {
-        ant.task = null;
-        ant.route = ant.route.slice(0, 1);
-      }
-      ant.working = false;
+  for (const unit of game.units) {
+    if (retreat && cellKey(unit.cell) === id) {
+      unit.cell = retreat;
+      interruptJob(game, unit);
+    } else if (unit.route.some((cell) => cellKey(cell) === id)) {
+      interruptJob(game, unit);
     }
   }
   for (const blueprint of Object.values(game.blueprints)) blueprint.workers = 0;

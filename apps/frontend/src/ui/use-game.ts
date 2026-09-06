@@ -2,10 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import type { Tool } from "../game/colony";
 import { planBuild } from "../game/construction";
 import { demolish } from "../game/demolition";
-import { type Role, roles, type ScoutCargo, SIMULATION_STEP, scoutCargoFood } from "../game/model";
+import { type FoodKind, foodValue } from "../game/items";
+import { SIMULATION_STEP } from "../game/model";
+import { roles } from "../game/rendering/appearance";
 import { createScene } from "../game/scene";
 import { createGame, stepGame } from "../game/simulation";
 import { startSpawn } from "../game/spawning";
+import { type HatchRole, hatchCost } from "../game/units";
 import { GAMEPLAY_TIP_INTERVAL, gameplayTips } from "./gameplay-tips";
 
 export function useGame() {
@@ -44,7 +47,6 @@ export function useGame() {
           accumulator = 0,
           uiTime = 0;
         const tick = (now: number) => {
-          // Pause in background; do not simulate hours on return to the tab.
           accumulator += Math.min((now - last) / 1000, 0.1);
           last = now;
           while (accumulator >= SIMULATION_STEP) {
@@ -82,12 +84,12 @@ export function useGame() {
     );
     return () => window.clearInterval(interval);
   }, []);
-  function spawnAnt(role: Role) {
+  function spawnAnt(role: HatchRole) {
     const started = startSpawn(game, role);
     setMessage(
       started
         ? `${roles[role].label}: яйцо выбрано, вылупление через 10 секунд`
-        : game.food < roles[role].cost
+        : game.food < hatchCost[role]
           ? "Не хватает еды — дождись разведчика"
           : "Нет свободной кладки — дождись яйца или завершения переноса",
     );
@@ -96,12 +98,12 @@ export function useGame() {
   return { host, game, tool, setTool, message, tip: gameplayTips[tipIndex], error, ready, spawnAnt };
 }
 
-function scoutDeliveryMessage(cargo: ScoutCargo) {
-  const labels: Record<ScoutCargo, string> = {
+function scoutDeliveryMessage(cargo: FoodKind) {
+  const labels: Record<FoodKind, string> = {
     apple: "зелёное яблоко",
     mushroom: "грибочек",
     caterpillar: "гусеницу",
   };
-  const food = scoutCargoFood[cargo];
+  const food = foodValue[cargo];
   return `Разведчик принёс ${labels[cargo]} · +${food} ${food === 1 ? "еда" : "еды"}`;
 }

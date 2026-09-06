@@ -1,14 +1,15 @@
 import { Application, Graphics } from "pixi.js";
-import { type Colony, isCell, type Point, placementError, type Tool } from "./colony";
+import { type Cell, isCell } from "./cells";
+import { type Colony, placementError, type Tool } from "./colony";
 import { plannedColony } from "./construction";
 import { demolitionError } from "./demolition";
 import type { Game } from "./model";
 import { drawColony } from "./rendering/colony";
 import { createCreatures } from "./rendering/creatures";
 import { createLandscape } from "./rendering/landscape";
-import { CELL, HEIGHT, SURFACE, WIDTH } from "./rendering/layout";
+import { CELL, HEIGHT, SURFACE, screenCell, WIDTH } from "./rendering/layout";
 
-export async function createScene(host: HTMLElement, onBuild: (x: number, y: number) => void) {
+export async function createScene(host: HTMLElement, onCellClick: (x: number, y: number) => void) {
   const app = new Application();
   await app.init({
     width: WIDTH,
@@ -26,7 +27,7 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
   let planned: Colony = {},
     tool: Tool = "corridor",
     revision = -1;
-  let active: Point | null = null;
+  let active: Cell | null = null;
   let currentGame: Game | undefined;
   function updateHover() {
     hover.clear();
@@ -40,12 +41,12 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
       .fill({ color: valid ? 0xd8dd8d : 0xd98470, alpha: 0.28 })
       .stroke({ color: valid ? 0xe8ecac : 0xdf9a86, width: 2 });
   }
-  const toCell = (event: PointerEvent): Point => {
+  const toCell = (event: PointerEvent): Cell => {
     const rect = app.canvas.getBoundingClientRect();
-    return {
-      x: Math.floor((((event.clientX - rect.left) / rect.width) * WIDTH) / CELL),
-      y: Math.floor((((event.clientY - rect.top) / rect.height) * HEIGHT - SURFACE) / CELL),
-    };
+    return screenCell(
+      ((event.clientX - rect.left) / rect.width) * WIDTH,
+      ((event.clientY - rect.top) / rect.height) * HEIGHT,
+    );
   };
   const move = (event: PointerEvent) => {
     active = toCell(event);
@@ -54,7 +55,7 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
   const down = (event: PointerEvent) => {
     if (event.button !== 0) return;
     const { x, y } = toCell(event);
-    onBuild(x, y);
+    onCellClick(x, y);
   };
   const leave = () => {
     active = null;
@@ -73,8 +74,8 @@ export async function createScene(host: HTMLElement, onBuild: (x: number, y: num
         tool = nextTool;
         planned = plannedColony(game);
         drawColony(tiles, game.colony, planned, tool);
-        updateHover();
       }
+      updateHover();
       creatures.update(game, time);
     },
     destroy() {

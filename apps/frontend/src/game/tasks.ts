@@ -1,204 +1,177 @@
-import { connected, key, neighbors, type Point, point } from "./colony";
-import { eggDestination, nurseryCells } from "./eggs";
-import {
-  type Ant,
-  ENTRANCE,
-  type Game,
-  roles,
-  SURFACE_EXIT,
-  WARRIOR_SURFACE_CHANCE,
-  type Worker,
-  type WorkerTask,
-} from "./model";
-import { move, routeTo } from "./navigation";
+import { type Cell, COLS, cellKey, ENTRANCE, HOME, neighbors, point, sameCell } from "./cells";
+import { connected } from "./colony";
+import { nurseryCells, storageCells } from "./eggs";
+import { canCarry, itemReserved } from "./items";
+import type { Job } from "./jobs";
+import type { Game } from "./model";
+import { type Navigation, setRoute } from "./navigation";
+import { type Faction, present, traits, type Unit } from "./units";
 
-type Task =
-  | { kind: "build"; target: string }
-  | { kind: "carry-egg"; eggId: number; source: string; destination: string }
-  | { kind: "forage" };
-type Bid = { ant: Ant; task: Task; route: Point[]; stand: Point; priority: number; cost: number };
-
-function free(ant: Ant) {
-  if (ant.role === "worker") return !ant.task && (!ant.route.length || ant.wandering);
-  if (ant.role === "scout") return ant.phase === "home" && (!ant.route.length || ant.wandering);
-  return !ant.route.length || ant.wandering;
+export const WANDER_MIN_SECONDS = 5;
+export const WANDER_MAX_SECONDS = 30;
+export const WARRIOR_SURFACE_CHANCE = 0.75;
+type Offer = { job: Job; target: Cell; priority: number; locks: string[]; preference: number };
+type Bid = { unit: Unit; offer: Offer; route: Cell[]; cost: number };
+function offer(job: Job, target: Cell, priority: number, locks: string[] = [], preference = 0): Offer {
+  return { job, target, priority, locks, preference };
 }
-
-function availableTasks(game: Game): Task[] {
-  const tasks: Task[] = Object.keys(game.blueprints).map((target) => ({ kind: "build", target }));
-  const destination = eggDestination(game);
-  if (destination) {
-    const nursery = new Set(nurseryCells(game).map((p) => key(p.x, p.y)));
-    for (const egg of game.eggs) {
-      if (!("cell" in egg.location) || !nursery.has(egg.location.cell)) continue;
-      if (game.enemies.some((enemy) => enemy.targetEggId === egg.id)) continue;
-      if (game.spawns.some((spawn) => spawn.eggId === egg.id)) continue;
-      if (game.ants.some((ant) => ant.role === "worker" && ant.task?.kind === "carry-egg" && ant.task.eggId === egg.id))
-        continue;
-      tasks.push({ kind: "carry-egg", eggId: egg.id, source: egg.location.cell, destination });
-    }
-  }
-  tasks.push({ kind: "forage" });
-  return tasks;
-}
-
-function routeFrom(game: Game, ant: Ant, destination: Point) {
-  const next = ant.wandering ? ant.route[0] : undefined;
-  if (!next) return routeTo(game.colony, ant, destination);
-  const continuation = routeTo(game.colony, next, destination);
-  return continuation && [next, ...continuation];
-}
-
-function bid(game: Game, ant: Ant, task: Task): Bid | undefined {
-  const role = task.kind === "forage" ? "scout" : "worker";
-  if (ant.role !== role) return;
-  const priority = task.kind === "build" ? 100 : task.kind === "carry-egg" ? 60 : game.food < 3 ? 120 : 80;
-  let destinations: Point[];
-  if (task.kind === "build") {
-    const target = point(task.target);
-    const blueprint = game.blueprints[task.target];
-    if (!blueprint) return;
-    destinations = neighbors(target).filter((p) => {
-      const tile = game.colony[key(p.x, p.y)];
-      return blueprint.tile === "corridor" ? tile === "corridor" : connected(tile, "room", p.y === target.y);
-    });
-  } else destinations = [task.kind === "carry-egg" ? point(task.source) : ENTRANCE];
-  let best: Bid | undefined;
-  for (const stand of destinations) {
-    const route = routeFrom(game, ant, stand);
-    if (!route) continue;
-    const delivery = task.kind === "carry-egg" ? routeTo(game.colony, stand, point(task.destination)) : [];
-    if (!delivery) continue;
-    const cost = (route.length + delivery.length) / roles[ant.role].speed;
-    if (!best || cost < best.cost) best = { ant, task, route, stand, priority, cost };
-  }
-  return best;
-}
-
-function taskValid(game: Game, task: WorkerTask) {
-  if (task.kind === "build") return !!game.blueprints[task.target];
-  return game.eggs.some((egg) => egg.id === task.eggId);
-}
-
-function tunnelWander(game: Game, ant: Ant, random: () => number) {
-  const onSurface = ant.y === SURFACE_EXIT.y;
-  const origin = onSurface ? ENTRANCE : ant;
-  const prefix = onSurface ? [SURFACE_EXIT, ENTRANCE] : [];
-  const routes = Object.keys(game.colony).flatMap((cell) => {
-    const route = routeTo(game.colony, origin, point(cell));
-    const full = route && [...prefix, ...route];
-    return full?.length ? [full] : [];
-  });
-  return routes[Math.min(routes.length - 1, Math.floor(random() * routes.length))];
-}
-
-function surfaceWander(game: Game, ant: Ant, random: () => number) {
-  const onSurface = ant.y === SURFACE_EXIT.y;
-  const approach = onSurface ? [] : routeTo(game.colony, ant, ENTRANCE);
-  if (!approach) return;
-  const target = { x: 5 + Math.floor(random() * 7), y: SURFACE_EXIT.y };
-  return [...approach, ...(onSurface ? [] : [SURFACE_EXIT]), target];
-}
-
-function assignFallbacks(game: Game, ants: Ant[], random: () => number) {
-  for (const ant of ants) {
-    if (ant.wandering || ant.wanderWait > 0) continue;
-    const prefersSurface = ant.role === "warrior" && random() < WARRIOR_SURFACE_CHANCE;
-    const route = prefersSurface ? surfaceWander(game, ant, random) : tunnelWander(game, ant, random);
-    if (!route) continue;
-    ant.route = route;
-    ant.wandering = true;
-    if (ant.role === "warrior") ant.phase = prefersSurface ? "patrol" : "home";
-  }
-}
-
-export function assignTasks(game: Game, random: () => number = Math.random) {
-  for (const ant of game.ants) {
-    if (ant.role === "worker" && ant.task && !taskValid(game, ant.task)) {
-      ant.task = null;
-      ant.route = ant.route.slice(0, 1);
-    }
-  }
-  const ants = game.ants.filter((ant) => free(ant) && !game.enemies.length).sort((a, b) => a.id - b.id);
-  while (ants.length) {
-    const tasks = availableTasks(game);
-    let winner: Bid | undefined;
-    for (const ant of ants) {
-      for (const task of tasks) {
-        const candidate = bid(game, ant, task);
-        if (
-          candidate &&
-          (!winner ||
-            candidate.priority > winner.priority ||
-            (candidate.priority === winner.priority && candidate.cost < winner.cost))
-        )
-          winner = candidate;
+function availableOffers(game: Game, faction: Faction, navigation: Navigation, random: () => number): Offer[] {
+  const offers: Offer[] = [];
+  const enemies = game.units.filter((unit) => present(unit) && unit.faction !== faction);
+  for (const enemy of enemies)
+    offers.push(offer({ kind: "attack", targetId: enemy.id }, enemy.cell, faction === "colony" ? 200 : 100));
+  if (faction === "colony") {
+    if (enemies.length) {
+      for (const cell of [ENTRANCE, ...(navigation.route(ENTRANCE, HOME) ?? [])]) {
+        if (game.colony[cellKey(cell)] === "corridor")
+          offers.push(offer({ kind: "guard", destination: cell }, cell, 190));
       }
     }
-    if (!winner) {
-      assignFallbacks(game, ants, random);
-      return;
+    for (const [target, blueprint] of Object.entries(game.blueprints)) {
+      const cell = point(target);
+      for (const stand of neighbors(cell)) {
+        const tile = game.colony[cellKey(stand)];
+        if (blueprint.tile === "corridor" ? tile === "corridor" : connected(tile, "room", stand.y === cell.y)) {
+          offers.push(offer({ kind: "build", target, stand }, stand, 100));
+        }
+      }
     }
-    const { ant, task, route, stand } = winner;
-    ant.route = route;
-    ant.wandering = false;
-    ant.wanderWait = 0;
-    if (ant.role === "worker") {
-      if (task.kind === "build") ant.task = { kind: "build", target: task.target, stand };
-      if (task.kind === "carry-egg")
-        ant.task = { kind: "carry-egg", eggId: task.eggId, destination: task.destination, phase: "pickup" };
-    } else if (ant.role === "scout") {
-      ant.route = [...route, SURFACE_EXIT];
-      ant.phase = "outbound";
+    const exit = { x: random() < 0.5 ? -1 : COLS, y: 0 };
+    offers.push(offer({ kind: "forage", phase: "outbound", exit, remaining: 0 }, exit, 80));
+  } else if (!enemies.length) {
+    offers.push(offer({ kind: "leave", destination: { x: -1, y: 0 } }, { x: -1, y: 0 }, 10));
+  }
+  const nursery = nurseryCells(game);
+  const storage = faction === "colony" ? storageCells(game, navigation) : [];
+  for (const item of game.items) {
+    if (item.location.kind !== "cell" || itemReserved(game, item.id)) continue;
+    if (faction === "colony" && game.spawns.some((spawn) => spawn.eggId === item.id)) continue;
+    const source = item.location.cell;
+    if (
+      faction === "colony" &&
+      item.kind === "egg" &&
+      game.colony[cellKey(source)] === "room" &&
+      !nursery.some((cell) => sameCell(cell, source))
+    )
+      continue;
+    const destinations =
+      faction === "raiders"
+        ? [{ cell: { x: -1, y: 0 }, distance: 0 }]
+        : item.kind === "food"
+          ? [{ cell: HOME, distance: 0 }]
+          : storage;
+    for (const { cell, distance } of destinations) {
+      if (!navigation.route(source, cell)) continue;
+      const locks = [`item:${item.id}`];
+      if (faction === "colony" && item.kind === "egg") locks.push(`cell:${cellKey(cell)}`);
+      offers.push(
+        offer(
+          { kind: "haul", itemId: item.id, destination: cell, phase: "pickup" },
+          source,
+          faction === "raiders" ? 180 : item.kind === "food" ? 130 : 60,
+          locks,
+          distance,
+        ),
+      );
     }
-    ants.splice(ants.indexOf(ant), 1);
+  }
+  return offers;
+}
+function eligible(game: Game, unit: Unit, job: Job) {
+  if (!traits[unit.role].jobs.includes(job.kind)) return false;
+  if (job.kind === "attack" && unit.role === "worker" && unit.faction === "colony") return false;
+  if (job.kind === "haul") {
+    const item = game.items.find((item) => item.id === job.itemId);
+    return !!item && canCarry(unit, item);
+  }
+  return true;
+}
+function fallback(game: Game, unit: Unit, navigation: Navigation, random: () => number): Offer | undefined {
+  if (unit.job || unit.idleWait > 0 || unit.faction !== "colony") return;
+  const surface = unit.role === "warrior" && random() < WARRIOR_SURFACE_CHANCE;
+  const destinations = surface
+    ? Array.from({ length: 7 }, (_, i) => ({ x: 5 + i, y: 0 }))
+    : Object.keys(game.colony).map(point);
+  const reachable = destinations.filter((cell) => !sameCell(cell, unit.cell) && navigation.from(unit, cell));
+  const destination = reachable[Math.floor(random() * reachable.length)];
+  return destination && offer({ kind: "wander", destination }, destination, 0);
+}
+export function assignTasks(
+  game: Game,
+  faction: Faction,
+  navigation: Navigation,
+  engaged: ReadonlySet<number>,
+  random: () => number,
+) {
+  const free = game.units
+    .filter(
+      (unit) =>
+        unit.faction === faction &&
+        present(unit) &&
+        !engaged.has(unit.id) &&
+        unit.speed > 0 &&
+        (!unit.job || unit.job.kind === "wander"),
+    )
+    .sort((a, b) => a.id - b.id);
+  if (!free.length) return;
+  const offers = availableOffers(game, faction, navigation, random);
+  const bids: Bid[] = [];
+  for (const unit of free) {
+    const idle = fallback(game, unit, navigation, random);
+    for (const candidate of idle ? [...offers, idle] : offers) {
+      if (!eligible(game, unit, candidate.job)) continue;
+      const route = navigation.from(unit, candidate.target);
+      if (!route) continue;
+      const delivery =
+        candidate.job.kind === "haul"
+          ? (navigation.route(candidate.target, candidate.job.destination)?.length ?? 0)
+          : 0;
+      bids.push({ unit, offer: candidate, route, cost: (route.length - unit.travel + delivery) / unit.speed });
+    }
+  }
+  bids.sort(
+    (a, b) =>
+      b.offer.priority - a.offer.priority ||
+      b.offer.preference - a.offer.preference ||
+      a.cost - b.cost ||
+      a.unit.id - b.unit.id ||
+      cellKey(a.offer.target).localeCompare(cellKey(b.offer.target)),
+  );
+  const assigned = new Set<number>();
+  const locks = new Set<string>();
+  for (const bid of bids) {
+    if (assigned.has(bid.unit.id) || bid.offer.locks.some((lock) => locks.has(lock))) continue;
+    const job = { ...bid.offer.job };
+    bid.unit.job = job;
+    bid.unit.idleWait = 0;
+    setRoute(bid.unit, bid.route);
+    assigned.add(bid.unit.id);
+    for (const lock of bid.offer.locks) locks.add(lock);
   }
 }
-
-export function updateWorker(game: Game, ant: Worker, seconds: number) {
-  ant.working = false;
-  if (ant.route.length) {
-    move(ant, seconds);
-    return;
+export function jobValid(game: Game, unit: Unit) {
+  const job = unit.job;
+  if (!job) return true;
+  switch (job.kind) {
+    case "build":
+      return !!game.blueprints[job.target] && !!game.colony[cellKey(job.stand)];
+    case "haul": {
+      const item = game.items.find((item) => item.id === job.itemId);
+      if (!item) return false;
+      return job.phase === "pickup"
+        ? item.location.kind === "cell"
+        : item.location.kind === "carried" && item.location.unitId === unit.id;
+    }
+    case "attack":
+      return game.units.some(
+        (target) => target.id === job.targetId && present(target) && target.faction !== unit.faction,
+      );
+    case "guard":
+      return game.units.some((target) => present(target) && target.faction !== unit.faction);
+    case "forage":
+    case "leave":
+      return true;
+    case "wander":
+      return job.destination.y === 0 || !!game.colony[cellKey(job.destination)];
   }
-  const task = ant.task;
-  if (!task) return;
-  if (task.kind === "build") {
-    const blueprint = game.blueprints[task.target];
-    if (!blueprint) {
-      ant.task = null;
-      return;
-    }
-    if (ant.x !== task.stand.x || ant.y !== task.stand.y) {
-      ant.route = routeTo(game.colony, ant, task.stand) ?? [];
-      return;
-    }
-    ant.working = true;
-    const target = point(task.target);
-    ant.heading = Math.atan2(target.y - ant.y, target.x - ant.x);
-    blueprint.workers++;
-    return;
-  }
-  const egg = game.eggs.find((entry) => entry.id === task.eggId);
-  if (!egg) {
-    ant.task = null;
-    return;
-  }
-  if (task.phase === "pickup") {
-    if (!("cell" in egg.location) || egg.location.cell !== key(ant.x, ant.y)) {
-      ant.task = null;
-      return;
-    }
-    const route = routeTo(game.colony, ant, point(task.destination));
-    if (!route) {
-      ant.task = null;
-      return;
-    }
-    egg.location = { carrier: ant.id };
-    task.phase = "delivery";
-    ant.route = route;
-  } else if (key(ant.x, ant.y) === task.destination) {
-    egg.location = { cell: task.destination };
-    ant.task = null;
-  } else ant.route = routeTo(game.colony, ant, point(task.destination)) ?? [];
 }

@@ -1,8 +1,8 @@
 import type { Graphics } from "pixi.js";
-import { COLS, type Colony, key, placementError, ROWS, roomSpan, type Tool } from "../colony";
+import { COLS, ENTRANCE, key, ROWS } from "../cells";
+import { type Colony, placementError, roomSpan, type Tool } from "../colony";
 import { CELL, SURFACE } from "./layout";
 
-// Rectangles cover the center-to-edge corridor and only the room's outer margin.
 const passages = [
   { dx: 1, dy: 0, corridor: [18, 18, 34, 16], room: [48, 18, 4, 16] },
   { dx: -1, dy: 0, corridor: [0, 18, 34, 16], room: [0, 18, 4, 16] },
@@ -12,7 +12,7 @@ const passages = [
 
 export function drawColony(g: Graphics, colony: Colony, planned: Colony, tool: Tool) {
   g.clear();
-  for (let y = 0; y < ROWS; y++)
+  for (let y = 1; y < ROWS; y++)
     for (let x = 0; x < COLS; x++) {
       const tile = colony[key(x, y)];
       const px = x * CELL,
@@ -27,7 +27,7 @@ export function drawColony(g: Graphics, colony: Colony, planned: Colony, tool: T
     }
 }
 function drawVacantCell(g: Graphics, planned: Colony, tool: Tool, x: number, y: number) {
-  if (y === 0) return;
+  if (y <= 1) return;
   const px = x * CELL,
     py = SURFACE + y * CELL;
   g.rect(px + 1, py + 1, CELL - 2, CELL - 2).stroke({ color: 0xa09170, alpha: 0.1, width: 1 });
@@ -59,7 +59,7 @@ function drawPassages(g: Graphics, colony: Colony, x: number, y: number) {
   const corridor = colony[key(x, y)] === "corridor";
   for (const passage of passages) {
     const neighbor = colony[key(x + passage.dx, y + passage.dy)];
-    const entrance = x === 8 && y === 0 && passage.dy === -1;
+    const entrance = x === ENTRANCE.x && y === ENTRANCE.y && passage.dy === -1;
     const connected = neighbor && (corridor || neighbor === "corridor");
     if (!entrance && !connected) continue;
     const [left, top, width, height] = corridor ? passage.corridor : passage.room;

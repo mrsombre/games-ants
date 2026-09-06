@@ -1,0 +1,113 @@
+import { HOME, point, sameCell } from "./cells";
+import { carriedItem, dropCargo, foodValue, pickUp } from "./items";
+import { EPSILON, type Game, type GameEvent } from "./model";
+import { type Navigation, setRoute } from "./navigation";
+import { jobValid, WANDER_MAX_SECONDS, WANDER_MIN_SECONDS } from "./tasks";
+import type { Unit } from "./units";
+
+export function interruptJob(game: Game, unit: Unit) {
+  dropCargo(game, unit);
+  unit.job = null;
+  unit.working = false;
+  unit.route = [];
+  unit.travel = 0;
+}
+export function prepareJobs(game: Game, seconds: number, navigation: Navigation) {
+  for (const unit of game.units) {
+    unit.working = false;
+    unit.idleWait = Math.max(0, unit.idleWait - seconds);
+    if (unit.idleWait < EPSILON) unit.idleWait = 0;
+    if (!jobValid(game, unit)) interruptJob(game, unit);
+    const job = unit.job;
+    if (job?.kind === "attack") {
+      const target = game.units.find((other) => other.id === job.targetId);
+      if (target && (!unit.route.at(-1) || !sameCell(unit.route.at(-1) ?? unit.cell, target.cell))) {
+        const route = navigation.from(unit, target.cell);
+        if (route) setRoute(unit, route);
+        else interruptJob(game, unit);
+      }
+    }
+  }
+}
+function depositFood(game: Game, unit: Unit, events: GameEvent[]) {
+  const item = carriedItem(game, unit);
+  if (item?.kind !== "food") return;
+  const food = foodValue[item.food];
+  game.food += food;
+  game.deliveries++;
+  game.items = game.items.filter((entry) => entry.id !== item.id);
+  events.push({ kind: "scout-delivered", scoutId: unit.id, cargo: item.food, food });
+}
+export function performJob(
+  game: Game,
+  unit: Unit,
+  seconds: number,
+  navigation: Navigation,
+  random: () => number,
+  events: GameEvent[],
+) {
+  const job = unit.job;
+  if (!job || unit.route.length) return;
+  switch (job.kind) {
+    case "build": {
+      const blueprint = game.blueprints[job.target];
+      if (!blueprint || !sameCell(unit.cell, job.stand)) return;
+      unit.working = true;
+      const target = point(job.target);
+      unit.heading = Math.atan2(target.y - unit.cell.y, target.x - unit.cell.x);
+      blueprint.workers++;
+      return;
+    }
+    case "haul": {
+      const item = game.items.find((item) => item.id === job.itemId);
+      if (!item) return interruptJob(game, unit);
+      if (job.phase === "pickup") {
+        const route = navigation.from(unit, job.destination);
+        if (!route || !pickUp(game, unit, item)) return interruptJob(game, unit);
+        job.phase = "delivery";
+        setRoute(unit, route);
+      } else if (sameCell(unit.cell, job.destination)) {
+        if (unit.faction === "raiders") {
+          game.items = game.items.filter((entry) => entry.id !== item.id);
+          game.units = game.units.filter((entry) => entry.id !== unit.id);
+        } else if (item.kind === "food") depositFood(game, unit, events);
+        else dropCargo(game, unit);
+        unit.job = null;
+      }
+      return;
+    }
+    case "forage":
+      if (job.phase === "outbound") {
+        job.phase = "away";
+        job.remaining = 5 + random() * 55;
+      } else if (job.phase === "away") {
+        job.remaining = Math.max(0, job.remaining - seconds);
+        if (job.remaining > EPSILON) return;
+        const route = navigation.from(unit, HOME);
+        if (!route) return;
+        const roll = random();
+        game.items.push({
+          id: game.nextItemId++,
+          kind: "food",
+          food: roll < 0.4 ? "apple" : roll < 0.8 ? "mushroom" : "caterpillar",
+          location: { kind: "carried", unitId: unit.id },
+        });
+        job.phase = "returning";
+        setRoute(unit, route);
+      } else if (sameCell(unit.cell, HOME)) {
+        depositFood(game, unit, events);
+        unit.job = null;
+      }
+      return;
+    case "wander":
+      unit.job = null;
+      unit.idleWait = WANDER_MIN_SECONDS + random() * (WANDER_MAX_SECONDS - WANDER_MIN_SECONDS);
+      return;
+    case "leave":
+      if (sameCell(unit.cell, job.destination)) game.units = game.units.filter((entry) => entry.id !== unit.id);
+      return;
+    case "guard":
+    case "attack":
+      return;
+  }
+}

@@ -1,5 +1,5 @@
 import { Container, Graphics } from "pixi.js";
-import { CELL, HEIGHT, SURFACE, WIDTH } from "./layout";
+import { CELL, HEIGHT, GROUND as SURFACE, WIDTH } from "./layout";
 
 const random = (n: number) => {
   const v = Math.sin(n * 127.1 + 31.7) * 43758.5453;
@@ -18,7 +18,6 @@ export function createLandscape() {
 function drawForest(landscape: Graphics) {
   landscape.rect(0, 0, WIDTH, SURFACE).fill(0xb4c6b6);
   landscape.circle(620, 64, 41).fill({ color: 0xf5eed3, alpha: 0.8 });
-  // Layers of distant trees keep the forest readable behind the colony entrance.
   for (let layer = 0; layer < 3; layer++) {
     for (let i = 0; i < 16; i++) {
       const x = i * 72 + random(i + layer * 20) * 55 - 30;

@@ -1,12 +1,14 @@
 import type { Tool } from "../game/colony";
-import { buildSeconds, type Role, roles } from "../game/model";
+import { buildSeconds } from "../game/construction";
+import { roles } from "../game/rendering/appearance";
+import { type HatchRole, hatchCost } from "../game/units";
 
 type Props = {
   tool: Tool;
   setTool: (tool: Tool) => void;
   food: number;
   hasEggSource: boolean;
-  spawnAnt: (role: Role) => void;
+  spawnAnt: (role: HatchRole) => void;
 };
 export function CommandPanel({ tool, setTool, food, hasEggSource, spawnAnt }: Props) {
   return (
@@ -79,15 +81,15 @@ export function CommandPanel({ tool, setTool, food, hasEggSource, spawnAnt }: Pr
 function Spawning({ food, hasEggSource, spawnAnt }: Pick<Props, "food" | "hasEggSource" | "spawnAnt">) {
   return (
     <fieldset className="command-buttons recruitment" aria-label="Выведение муравьёв">
-      {(Object.keys(roles) as Role[]).map((role) => (
+      {(Object.keys(roles) as HatchRole[]).map((role) => (
         <button
           type="button"
           className="command-button"
           key={role}
-          disabled={food < roles[role].cost || !hasEggSource}
+          disabled={food < hatchCost[role] || !hasEggSource}
           onClick={() => spawnAnt(role)}
-          aria-label={`${roles[role].label} — ${roles[role].cost} еды и яйцо`}
-          title={`${roles[role].label} — ${roles[role].cost} еды и яйцо`}
+          aria-label={`${roles[role].label} — ${hatchCost[role]} еды и яйцо`}
+          title={`${roles[role].label} — ${hatchCost[role]} еды и яйцо`}
         >
           <svg viewBox="0 0 48 36" aria-hidden="true" style={{ color: `#${roles[role].color.toString(16)}` }}>
             <g
@@ -104,7 +106,7 @@ function Spawning({ food, hasEggSource, spawnAnt }: Pick<Props, "food" | "hasEgg
             </g>
           </svg>
           <span>{roles[role].label}</span>
-          <small>{roles[role].cost} еды + яйцо</small>
+          <small>{hatchCost[role]} еды + яйцо</small>
         </button>
       ))}
     </fieldset>

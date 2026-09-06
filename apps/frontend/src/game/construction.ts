@@ -1,5 +1,9 @@
-import { type BuildTool, type Colony, key, placementError } from "./colony";
-import { buildSeconds, type Game } from "./model";
+import { key } from "./cells";
+import { type BuildTool, type Colony, placementError } from "./colony";
+import { EPSILON, type Game } from "./model";
+
+export type Blueprint = { tile: BuildTool; progress: number; workers: number };
+export const buildSeconds = { corridor: 20, room: 30 };
 
 export function plannedColony(game: Game): Colony {
   return { ...game.colony, ...Object.fromEntries(Object.entries(game.blueprints).map(([id, b]) => [id, b.tile])) };
@@ -21,7 +25,7 @@ export function cancelLastBlueprint(game: Game) {
 export function advanceConstruction(game: Game, seconds: number) {
   for (const [id, blueprint] of Object.entries(game.blueprints)) {
     blueprint.progress += (seconds * blueprint.workers) / buildSeconds[blueprint.tile];
-    if (blueprint.progress >= 1 - 1e-9) {
+    if (blueprint.progress >= 1 - EPSILON) {
       game.colony = { ...game.colony, [id]: blueprint.tile };
       delete game.blueprints[id];
       game.revision++;

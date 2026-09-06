@@ -1,107 +1,95 @@
-import { describe, expect, it } from "vitest";
-import { planBuild } from "./construction";
-import { demolish } from "./demolition";
-import type { Game } from "./model";
-import { createGame, stepGame } from "./simulation";
+import { expect, it } from "vitest";
+import { advanceEggs, nurseryCells, storageCells } from "./eggs";
+import { queenOf } from "./model";
+import { Navigation } from "./navigation";
+import { addUnit, advance, egg, world } from "./test-support";
 
-function advance(game: Game, seconds: number) {
-  game.attackTimer = Number.POSITIVE_INFINITY;
-  for (let i = 0; i < Math.round(seconds / 0.05); i++) stepGame(game, 0.05, () => 0.5);
-}
+it("lays every thirty seconds, pauses with both nursery cells occupied and preserves elapsed time", () => {
+  const game = world();
+  advance(game, 12);
+  const first = egg(game, { x: 9, y: 3 });
+  egg(game, { x: 11, y: 3 });
+  advance(game, 60);
+  expect(game.eggTimer).toBeCloseTo(12, 8);
+  expect(game.items).toHaveLength(2);
+  first.location.cell = { x: 6, y: 2 };
+  advance(game, 17.95);
+  expect(game.items).toHaveLength(2);
+  advance(game, 0.05);
+  expect(game.items).toHaveLength(3);
+  expect(game.items[2]?.location).toEqual({ kind: "cell", cell: { x: 9, y: 3 } });
+  expect(game.eggTimer).toBeCloseTo(0, 8);
+});
+it("requires a living queen and completed nursery rooms, including delivery reservations", () => {
+  const game = world();
+  const worker = addUnit(game);
+  worker.job = { kind: "haul", itemId: 99, destination: { x: 9, y: 3 }, phase: "delivery" };
+  delete game.colony["11,3"];
+  game.blueprints["11,3"] = { tile: "room", workers: 0, progress: 0 };
+  advanceEggs(game, 30);
+  expect(game.items).toEqual([]);
+  expect(game.eggTimer).toBe(0);
+  worker.job = null;
+  const queen = queenOf(game);
+  if (!queen) throw new Error("queen");
+  queen.hp = 0;
+  advanceEggs(game, 30);
+  expect(game.items).toEqual([]);
+});
+it("carries clutches visibly to remote storage, fills rooms and recovers a dropped corridor egg", () => {
+  const game = world();
+  addUnit(game);
+  const item = egg(game, { x: 9, y: 3 });
+  for (let i = 0; i < 100 && item.location.kind === "cell"; i++) advance(game, 0.05);
+  expect(item.location).toHaveProperty("unitId");
+  advance(game, 5);
+  expect(item.location).toEqual({ kind: "cell", cell: { x: 6, y: 2 } });
+  const dropped = egg(game, { x: 8, y: 4 });
+  advance(game, 10);
+  expect(dropped.location).toEqual({ kind: "cell", cell: { x: 7, y: 2 } });
+  advance(game, 100);
+  expect(game.items.filter((item) => item.kind === "egg")).toHaveLength(4);
+});
 
-function workerGame() {
-  const game = createGame();
-  game.ants = game.ants.filter((ant) => ant.role === "worker");
-  return game;
-}
+it("keeps eggs beside the queen when no remote storage exists and ignores vertical rooms for laying", () => {
+  const game = world();
+  delete game.colony["6,2"];
+  delete game.colony["7,2"];
+  const worker = addUnit(game);
+  const item = egg(game, { x: 9, y: 3 });
+  advance(game, 5);
+  expect(item.location).toEqual({ kind: "cell", cell: { x: 9, y: 3 } });
+  expect(worker.job?.kind).not.toBe("haul");
+  egg(game, { x: 11, y: 3 });
+  game.colony["9,4"] = "corridor";
+  game.colony["10,4"] = "room";
+  advanceEggs(game, 30);
+  expect(game.items).toHaveLength(2);
+  expect(game.eggTimer).toBeCloseTo(5, 8);
+});
 
-describe("egg lifecycle", () => {
-  it("starts with one clutch and lays another after 30 seconds", () => {
-    const game = createGame(() => 0);
-    game.ants = [];
-    expect(game.eggs).toEqual([{ id: 1, location: { cell: "9,2" } }]);
-    advance(game, 29.95);
-    expect(game.eggs).toHaveLength(1);
-    advance(game, 0.05);
-    expect(game.eggs).toEqual([
-      { id: 1, location: { cell: "9,2" } },
-      { id: 2, location: { cell: "11,2" } },
-    ]);
-    expect(game.eggTimer).toBeCloseTo(0);
-  });
-  it("pauses the timer when both adjacent cells are occupied and preserves elapsed time", () => {
-    const game = createGame();
-    game.ants = [];
-    advance(game, 12);
-    game.eggs = [
-      { id: 1, location: { cell: "9,2" } },
-      { id: 2, location: { cell: "11,2" } },
-    ];
-    game.nextEggId = 3;
-    advance(game, 100);
-    expect(game.eggTimer).toBeCloseTo(12);
-    expect(game.eggs).toHaveLength(2);
-    game.eggs[0] = { id: 1, location: { cell: "6,1" } };
-    advance(game, 17.95);
-    expect(game.eggs).toHaveLength(2);
-    advance(game, 0.05);
-    expect(game.eggs).toHaveLength(3);
-    expect(game.eggs[2]?.location).toEqual({ cell: "9,2" });
-  });
-  it("only lays in completed room cells beside the queen", () => {
-    const game = createGame();
-    game.ants = [];
-    delete game.colony["9,2"];
-    delete game.colony["11,2"];
-    game.eggs = [];
-    game.blueprints["11,2"] = { tile: "room", workers: 0, progress: 0 };
-    advance(game, 60);
-    expect(game.eggs).toEqual([]);
-    expect(game.eggTimer).toBe(0);
-  });
-  it("carries the starting clutch visibly before storing it in the farthest reachable room cell", () => {
-    const game = workerGame();
-    expect(game.eggs).toHaveLength(1);
-    for (let i = 0; i < 200 && game.eggs[0] && "cell" in game.eggs[0].location; i++) {
-      stepGame(game, 0.05, () => 0.5);
-    }
-    expect(game.eggs[0]?.location).toHaveProperty("carrier");
-    advance(game, 5);
-    expect(game.eggs[0]?.location).toEqual({ cell: "6,1" });
-    expect(game.ants.every((ant) => ant.role !== "worker" || ant.task === null)).toBe(true);
-  });
-  it("fills rooms without duplication or hatching and resumes when storage is extended", () => {
-    const game = workerGame();
-    advance(game, 180);
-    expect(game.eggs).toHaveLength(4);
-    expect(new Set(game.eggs.map((egg) => ("cell" in egg.location ? egg.location.cell : "carried"))).size).toBe(4);
-    expect(game.ants).toHaveLength(3);
-    expect(game.eggTimer).toBeCloseTo(0);
-    expect(planBuild(game, 5, 1, "room")).toBeNull();
-    advance(game, 60);
-    expect(game.eggs).toHaveLength(5);
-    expect(game.eggs.some((egg) => "cell" in egg.location && egg.location.cell === "5,1")).toBe(true);
-  });
-  it("protects stored eggs and reserved destinations from demolition", () => {
-    const game = workerGame();
-    game.eggs = [{ id: 1, location: { cell: "9,2" } }];
-    game.nextEggId = 2;
-    stepGame(game, 0.05);
-    expect(demolish(game, 6, 1)).toBeTruthy();
-    expect(demolish(game, 9, 2)).toBeTruthy();
-    advance(game, 6);
-    expect(demolish(game, 6, 1)).toBeTruthy();
-    expect(game.eggs[0]?.location).toEqual({ cell: "6,1" });
-  });
-  it("does not use unreachable or vertical neighboring rooms for storage", () => {
-    const game = workerGame();
-    delete game.colony["6,1"];
-    delete game.colony["7,1"];
-    game.colony["10,3"] = "room";
-    game.eggs = [{ id: 1, location: { cell: "9,2" } }];
-    game.nextEggId = 2;
-    advance(game, 10);
-    expect(game.eggs[0]?.location).toEqual({ cell: "9,2" });
-    expect(game.ants.every((ant) => ant.role !== "worker" || ant.task?.kind !== "carry-egg")).toBe(true);
-  });
+it("finds only the colony queen and safely handles her absence", () => {
+  const game = world();
+  const enemyQueen = addUnit(game, "queen", { x: 6, y: 2 }, "raiders");
+  game.units.reverse();
+  expect(queenOf(game)?.id).toBe(0);
+  game.units = [enemyQueen];
+  advanceEggs(game, 30);
+  expect(game.items).toEqual([]);
+  expect(queenOf(game)).toBeUndefined();
+  expect(nurseryCells(game)).toEqual([]);
+  expect(storageCells(game, new Navigation(game.colony))).toEqual([]);
+});
+
+it("preserves excess laying time and excludes disconnected rooms from storage", () => {
+  const game = world();
+  game.eggTimer = 29.99;
+  advanceEggs(game, 0.03);
+  expect(game.items).toHaveLength(1);
+  expect(game.eggTimer).toBeCloseTo(0.02, 8);
+  game.colony["0,9"] = "room";
+  expect(storageCells(game, new Navigation(game.colony)).map(({ cell }) => cell)).toEqual([
+    { x: 6, y: 2 },
+    { x: 7, y: 2 },
+  ]);
 });

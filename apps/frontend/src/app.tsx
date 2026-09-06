@@ -1,17 +1,21 @@
-import { type Role, roles } from "./game/model";
+import { queenOf } from "./game/model";
+import { roles } from "./game/rendering/appearance";
 import { spawnableEggs } from "./game/spawning";
+import type { HatchRole } from "./game/units";
 import { CommandPanel } from "./ui/command-panel";
 import { useGame } from "./ui/use-game";
 
 export function App() {
   const { host, game, tool, setTool, message, tip, error, ready, spawnAnt } = useGame();
-  const { ants, food } = game;
-  const scoutsAway = ants.filter((ant) => ant.role === "scout" && ant.phase === "away");
+  const { food } = game;
+  const ants = game.units.filter((unit) => unit.faction === "colony" && unit.role !== "queen");
+  const enemies = game.units.filter((unit) => unit.faction === "raiders");
+  const scoutsAway = ants.filter((ant) => ant.job?.kind === "forage" && ant.job.phase === "away");
   return (
     <main className="game">
       <header className="topbar">
         <section className="ant-counts" aria-label="Муравьи по типам">
-          {(Object.keys(roles) as Role[]).map((role) => {
+          {(Object.keys(roles) as HatchRole[]).map((role) => {
             const count = ants.filter((ant) => ant.role === role).length;
             return (
               <div
@@ -47,10 +51,10 @@ export function App() {
           <div className="scene-heading">
             <span>
               <i />{" "}
-              {game.queen.hp <= 0
+              {(queenOf(game)?.hp ?? 0) <= 0
                 ? "Королева погибла"
-                : game.enemies.length
-                  ? `Атака · врагов: ${game.enemies.length}`
+                : enemies.length
+                  ? `Атака · врагов: ${enemies.length}`
                   : "Лесная поляна"}
             </span>
             <span className="scouts-away" role="img" aria-label={`В разведке: ${scoutsAway.length}`}>
@@ -83,7 +87,7 @@ export function App() {
   );
 }
 
-function AntHead({ antRole }: { antRole: Role }) {
+function AntHead({ antRole }: { antRole: HatchRole }) {
   return (
     <svg viewBox="0 0 40 40" aria-hidden="true" style={{ color: `#${roles[antRole].color.toString(16)}` }}>
       <path d="M14 17 10 9 5 6M26 17l4-8 5-3" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />

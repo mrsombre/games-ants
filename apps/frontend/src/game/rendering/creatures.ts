@@ -1,6 +1,11 @@
 import { Container, Graphics } from "pixi.js";
-import { point } from "../colony";
-import { type Creature, EGG_SECONDS, enemyTraits, type Game, HOME, QUEEN_HP, roles, type ScoutCargo } from "../model";
+import { HOME, point } from "../cells";
+import { EGG_SECONDS } from "../eggs";
+import type { FoodKind } from "../items";
+import { type Game, queenOf } from "../model";
+import { position } from "../navigation";
+import { present, type Unit } from "../units";
+import { roles } from "./appearance";
 import { CELL, SURFACE } from "./layout";
 import { drawQueen } from "./queen";
 
@@ -16,16 +21,17 @@ export function createCreatures() {
     drawBlueprints(construction, game.blueprints);
     drawEggs(eggs, game);
     queen.clear();
-    if (game.queen.hp > 0) {
+    const queenUnit = queenOf(game);
+    if (queenUnit && queenUnit.hp > 0) {
       const x = HOME.x * CELL,
         y = SURFACE + HOME.y * CELL;
       drawQueen(queen, x, y);
-      if (game.queen.hp < QUEEN_HP) {
+      if (queenUnit.hp < queenUnit.maxHp) {
         queen.roundRect(x + 6, y + 3, 40, 3, 1).fill(0x56382d);
-        queen.roundRect(x + 6, y + 3, (40 * game.queen.hp) / QUEEN_HP, 3, 1).fill(0xa9df79);
+        queen.roundRect(x + 6, y + 3, (40 * queenUnit.hp) / queenUnit.maxHp, 3, 1).fill(0xa9df79);
       }
     }
-    const living = [...game.ants, ...game.enemies];
+    const living = game.units.filter((unit) => unit.role !== "queen");
     const ids = new Set(living.map((ant) => ant.id));
     for (const [id, sprite] of sprites) {
       if (!ids.has(id)) {
@@ -33,6 +39,9 @@ export function createCreatures() {
         sprites.delete(id);
       }
     }
+    const cargoByUnit = new Map(
+      game.items.flatMap((item) => (item.location.kind === "carried" ? [[item.location.unitId, item] as const] : [])),
+    );
     for (const ant of living) {
       let sprite = sprites.get(ant.id);
       if (!sprite) {
@@ -40,25 +49,27 @@ export function createCreatures() {
         sprites.set(ant.id, sprite);
         creatures.addChild(sprite);
       }
-      sprite.visible = !(ant.role === "scout" && ant.phase === "away");
+      sprite.visible = present(ant);
       if (!sprite.visible) continue;
-      drawAnt(
-        sprite,
-        ant,
-        time,
-        game.eggs.some((egg) => "carrier" in egg.location && egg.location.carrier === ant.id),
-      );
+      const cargo = cargoByUnit.get(ant.id);
+      drawAnt(sprite, ant, time, cargo?.kind === "egg", cargo?.kind === "food" ? cargo.food : undefined);
     }
   }
   return { layer, update: renderSimulation };
 }
 function drawEggs(g: Graphics, game: Game) {
   g.clear();
-  for (const egg of game.eggs) {
-    if (!("cell" in egg.location)) continue;
-    const p = point(egg.location.cell);
+  for (const egg of game.items) {
+    if (egg.location.kind !== "cell") continue;
+    const p = egg.location.cell;
     const x = (p.x + 0.5) * CELL;
     const y = SURFACE + (p.y + 0.5) * CELL;
+    if (egg.kind === "food") {
+      const color = egg.food === "mushroom" ? 0xc77852 : 0x8eae4e;
+      g.ellipse(x, y, egg.food === "caterpillar" ? 13 : 8, 6).fill(color);
+      g.circle(x - 3, y - 2, 2).fill(0xd8e6a3);
+      continue;
+    }
     g.ellipse(x, y + 7, 13, 4).fill({ color: 0x483921, alpha: 0.2 });
     for (const offset of [-7, 0, 7]) {
       g.ellipse(x + offset, y + (offset === 0 ? -2 : 2), 4, 6)
@@ -71,7 +82,7 @@ function drawEggs(g: Graphics, game: Game) {
       g.roundRect(x - 16, y + 14, 32 * spawn.progress, 4, 1).fill(roles[spawn.role].color);
     }
   }
-  if (game.queen.hp <= 0) return;
+  if ((queenOf(game)?.hp ?? 0) <= 0) return;
   const x = HOME.x * CELL + 10;
   const y = SURFACE + HOME.y * CELL + 43;
   g.roundRect(x, y, CELL - 20, 3, 1).fill(0x695034);
@@ -98,9 +109,12 @@ function drawBlueprints(construction: Graphics, blueprints: Game["blueprints"]) 
       construction.circle(px + 7 + i * 5, py + 8, 1.5).fill(0xf1cd77);
   }
 }
-function drawAnt(sprite: Graphics, ant: Creature, time: number, carryingEgg: boolean) {
+function drawAnt(sprite: Graphics, ant: Unit, time: number, carryingEgg: boolean, cargo?: FoodKind) {
   sprite.clear();
-  const { color, size, hp } = ant.role === "enemy" ? enemyTraits : roles[ant.role];
+  if (ant.role === "queen") return;
+  const { size } = roles[ant.role];
+  const color = ant.faction === "raiders" ? 0xff7900 : roles[ant.role].color;
+  const hp = ant.maxHp;
   const moving = ant.route.length > 0 || (ant.role === "worker" && ant.working);
   for (const side of [-1, 1])
     for (let leg = 0; leg < 3; leg++) {
@@ -116,7 +130,7 @@ function drawAnt(sprite: Graphics, ant: Creature, time: number, carryingEgg: boo
     .fill(color)
     .ellipse(0, 0, 4, 2.8)
     .fill(color)
-    .circle(8, 0, ant.role === "warrior" || ant.role === "enemy" ? 5 : 3.5)
+    .circle(8, 0, ant.role === "warrior" ? 5 : 3.5)
     .fill(color);
   sprite.moveTo(10, -2).lineTo(15, -6).moveTo(10, 2).lineTo(15, 6).stroke({ color, width: 1.2 });
   sprite.circle(9, -1.5, 1).fill(0x241f1c);
@@ -125,18 +139,18 @@ function drawAnt(sprite: Graphics, ant: Creature, time: number, carryingEgg: boo
     for (const offset of [-4, 0, 4])
       sprite.ellipse(18, offset, 5, 3).fill(0xf5e8bc).stroke({ color: 0xc5ad75, width: 0.7 });
   }
-  if (ant.role === "warrior" || ant.role === "enemy")
+  if (ant.role === "warrior")
     sprite.moveTo(11, -3).lineTo(15, -2).moveTo(11, 3).lineTo(15, 2).stroke({ color: 0xf4c1a3, width: 2 });
-  if (ant.role === "scout" && ant.cargo) drawScoutCargo(sprite, ant.cargo);
+  if (cargo) drawScoutCargo(sprite, cargo);
   if (ant.hp < hp)
     for (let i = 0; i < hp; i++) sprite.circle(-6 + i * 6, -14, 2).fill(i < ant.hp ? 0xa9df79 : 0x56382d);
   sprite.scale.set(size);
-  // Small per-ant offsets make workers sharing a site visible inside the passage.
-  sprite.position.set((ant.x + 0.5) * CELL, SURFACE + (ant.y + 0.5) * CELL + ((ant.id % 3) - 1) * 3);
+  const p = position(ant);
+  sprite.position.set((p.x + 0.5) * CELL, SURFACE + (p.y + 0.5) * CELL + ((ant.id % 3) - 1) * 3);
   sprite.rotation = ant.heading;
 }
 
-function drawScoutCargo(g: Graphics, cargo: ScoutCargo) {
+function drawScoutCargo(g: Graphics, cargo: FoodKind) {
   if (cargo === "apple") {
     g.circle(21, 0, 8).fill(0x7da54c).stroke({ color: 0x4f6e31, width: 1.2 });
     g.circle(18, -3, 2).fill({ color: 0xd8e6a3, alpha: 0.65 });
