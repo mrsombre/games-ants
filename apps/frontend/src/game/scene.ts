@@ -84,7 +84,9 @@ export async function createScene(host: HTMLElement, onCellClick: (x: number, y:
       app.canvas.removeEventListener("pointermove", move);
       app.canvas.removeEventListener("pointerdown", down);
       app.canvas.removeEventListener("pointerleave", leave);
-      app.destroy(true, { children: true });
+      // releaseGlobalResources would clear Pixi's process-wide batch pool, breaking any scene
+      // that outlives this one — StrictMode and HMR always keep two scenes alive briefly.
+      app.destroy({ removeView: true }, { children: true });
     },
   };
 }
