@@ -11,7 +11,11 @@ export function storedFood(game: Game) {
       item.kind === "food" && item.location.kind === "cell" && game.colony[cellKey(item.location.cell)] === "storage",
   );
 }
-export const foodStock = (game: Game) => storedFood(game).reduce((sum, item) => sum + item.portions, 0);
+export const foodStock = (game: Game, cellId?: string) =>
+  storedFood(game).reduce(
+    (sum, item) => sum + (cellId === undefined || cellKey(item.location.cell) === cellId ? item.portions : 0),
+    0,
+  );
 const itemSize = (item: Item | undefined) => (item?.kind === "food" ? item.portions : 1);
 export function storageOccupancy(game: Game, id: string, exceptUnit?: number) {
   const stored = game.items

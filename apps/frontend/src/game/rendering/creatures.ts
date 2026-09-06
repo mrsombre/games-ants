@@ -1,9 +1,10 @@
 import { Container, Graphics } from "pixi.js";
 import { cellKey, point } from "../cells";
 import { EGG_SECONDS } from "../eggs";
-import { type FoodKind, foodValue } from "../items";
+import type { FoodKind } from "../items";
 import { type Game, queenOf } from "../model";
 import { position } from "../navigation";
+import { foodStock } from "../storage";
 import { present, type Unit } from "../units";
 import { roles } from "./appearance";
 import { foodSlotX } from "./colony";
@@ -66,7 +67,7 @@ export function createCreatures() {
 }
 function drawEggs(g: Graphics, game: Game) {
   g.clear();
-  const slots = new Map<string, number>();
+  const piles = new Map<string, number>();
   for (const egg of [...game.items].sort((a, b) => a.id - b.id)) {
     if (egg.location.kind !== "cell") continue;
     const p = egg.location.cell;
@@ -74,13 +75,9 @@ function drawEggs(g: Graphics, game: Game) {
     const y = SURFACE + (p.y + 0.5) * CELL;
     if (egg.kind === "food") {
       const id = cellKey(p);
-      const slot = slots.get(id) ?? 0;
-      slots.set(id, slot + 1);
-      const fx = p.x * CELL + foodSlotX(slot);
-      const color = egg.food === "mushroom" ? 0xc77852 : 0x8eae4e;
-      const length = egg.food === "caterpillar" ? (8 * egg.portions) / foodValue.caterpillar : 6;
-      g.ellipse(fx, y, length, 5).fill(color);
-      g.circle(fx - 2, y - 2, 1.6).fill(0xd8e6a3);
+      const stacked = piles.get(id) ?? 0;
+      piles.set(id, stacked + egg.portions);
+      if (stacked === 0) drawFoodPile(g, p.x * CELL, y, foodStock(game, id));
       continue;
     }
     g.ellipse(x, y + 7, 13, 4).fill({ color: 0x483921, alpha: 0.2 });
@@ -164,6 +161,53 @@ function drawAnt(sprite: Graphics, ant: Unit, time: number, carryingEgg: boolean
   const p = position(ant);
   sprite.position.set((p.x + 0.5) * CELL, SURFACE + (p.y + 0.5) * CELL + ((ant.id % 3) - 1) * 3);
   sprite.rotation = ant.heading;
+}
+
+function drawFoodPile(g: Graphics, left: number, y: number, portions: number) {
+  const ax = left + foodSlotX(0);
+  g.ellipse(ax + 2, y + 8, 8, 2.5).fill({ color: 0x483921, alpha: 0.2 });
+  g.circle(ax, y + 1, 8)
+    .fill(0x7da54c)
+    .stroke({ color: 0x4f6e31, width: 1.2 });
+  g.circle(ax - 3, y - 2, 2).fill({ color: 0xd8e6a3, alpha: 0.65 });
+  g.moveTo(ax, y - 6)
+    .lineTo(ax - 2, y - 11)
+    .stroke({ color: 0x6f4c2c, width: 2, cap: "round" });
+  g.ellipse(ax + 2, y - 9, 5, 2.5).fill(0x587d3d);
+  if (portions < 2) return;
+  const mx = left + foodSlotX(1);
+  g.ellipse(mx, y + 9, 8, 2.5).fill({ color: 0x483921, alpha: 0.2 });
+  g.roundRect(mx - 3.5, y - 2, 7, 12, 3)
+    .fill(0xe4c998)
+    .stroke({ color: 0x9d744f, width: 1 });
+  g.ellipse(mx, y - 4, 11, 7)
+    .fill(0xc77852)
+    .stroke({ color: 0x8f5038, width: 1.2 });
+  for (const [dx, dy] of [
+    [-5, -5],
+    [1, -7],
+    [5, -3],
+  ] as const)
+    g.circle(mx + dx, y + dy, 1.2).fill(0xf2d8a9);
+  if (portions < 3) return;
+  const cx = left + foodSlotX(2);
+  g.ellipse(cx, y + 8, 12, 2.5).fill({ color: 0x483921, alpha: 0.2 });
+  for (const [dx, dy] of [
+    [-9, 2],
+    [-3, 0],
+    [3, 2],
+  ] as const) {
+    g.circle(cx + dx, y + dy, 4.5)
+      .fill(0x8eae4e)
+      .stroke({ color: 0x587431, width: 1 });
+    g.moveTo(cx + dx - 1, y + dy + 4)
+      .lineTo(cx + dx - 2, y + dy + 7)
+      .stroke({ color: 0x587431, width: 1 });
+  }
+  g.circle(cx + 9, y, 5)
+    .fill(0xa8c75e)
+    .stroke({ color: 0x587431, width: 1 });
+  g.circle(cx + 11, y - 1, 1).fill(0x2f3d1c);
 }
 
 function drawScoutCargo(g: Graphics, cargo: FoodKind) {
