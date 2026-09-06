@@ -41,15 +41,15 @@ a:focus-visible {
   height: var(--topbar-height);
   padding: 0 max(42px, calc((100vw - 1576px) / 2));
   border-bottom: 1px solid #deded2;
-  display: flex;
+  display: grid;
+  grid-template-columns: 40% 20% 40%;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
   background: #f3f1e9f2;
   box-shadow: 0 5px 20px #38422f12;
   backdrop-filter: blur(10px);
 }
 .ant-counts {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 24px;
@@ -70,6 +70,7 @@ a:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 .stats {
+  min-width: 0;
   display: flex;
   gap: 28px;
 }
@@ -93,7 +94,9 @@ a:focus-visible {
 }
 .latest-event {
   min-width: 0;
+  width: 100%;
   max-width: 520px;
+  justify-self: end;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -336,6 +339,7 @@ a:focus-visible {
   }
   .topbar {
     padding: 0 16px;
+    grid-template-columns: 70% 30%;
   }
   .ant-counts {
     gap: 12px;
@@ -352,6 +356,7 @@ a:focus-visible {
   }
   .stats {
     gap: 14px;
+    justify-content: flex-end;
   }
   .resource-icon {
     width: 28px;
@@ -371,9 +376,6 @@ a:focus-visible {
   }
 }
 @media (max-width: 480px) {
-  .topbar {
-    gap: 10px;
-  }
   .command-button {
     width: 70px;
     height: 70px;
