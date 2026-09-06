@@ -104,28 +104,20 @@ it.each([
     ]);
   },
 );
-it("drops food and eggs immediately on combat contact, before damage, and releases reservations", () => {
+it("keeps an evading hauler's cargo until death and only then leaves it in the cell", () => {
   const game = world();
   const worker = addUnit(game, "worker", { x: 8, y: 3 });
-  const scout = addUnit(game, "scout", { x: 8, y: 3 });
   const item = egg(game, worker.cell);
-  const apple = food(game, scout.cell);
-  game.items = [
-    { ...item, location: { kind: "carried", unitId: worker.id } },
-    { ...apple, location: { kind: "carried", unitId: scout.id } },
-  ];
+  game.items = [{ ...item, location: { kind: "carried", unitId: worker.id } }];
   worker.job = { kind: "haul", itemId: item.id, destination: { x: 6, y: 4 }, phase: "delivery" };
-  scout.job = { kind: "haul", itemId: apple.id, destination: { x: 7, y: 2 }, phase: "delivery" };
   addUnit(game, "warrior", worker.cell, "raiders");
   stepGame(game);
-  expect(game.items.map((item) => item.location)).toEqual([
-    { kind: "cell", cell: { x: 8, y: 3 } },
-    { kind: "cell", cell: { x: 8, y: 3 } },
-  ]);
-  expect([worker.job, scout.job]).toEqual([null, null]);
-  expect([worker.hp, scout.hp, foodStock(game)]).toEqual([8, 10, 0]);
-  advance(game, 1.95);
+  expect(game.items.map((entry) => entry.location)).toEqual([{ kind: "carried", unitId: worker.id }]);
+  expect(worker.job).toMatchObject({ kind: "haul" });
+  advance(game, 2);
+  expect(worker.hp).toBe(0);
   expect(game.units).not.toContain(worker);
+  expect(game.items.map((entry) => entry.location)).toEqual([{ kind: "cell", cell: { x: 8, y: 3 } }]);
 });
 it("recovers dropped food through the scout auction and credits it once", () => {
   const game = world();
@@ -137,20 +129,18 @@ it("recovers dropped food through the scout auction and credits it once", () => 
   expect(caterpillar.location).toEqual({ kind: "cell", cell: { x: 7, y: 2 } });
   expect(events.filter((event) => event.kind === "scout-delivered")).toHaveLength(1);
 });
-it("halts invaders at defenders and cannot cross occupied cells alive", () => {
+it("halts invaders at a soldier and cannot cross occupied cells alive", () => {
   const game = world();
-  const worker = addUnit(game, "worker", { x: 8, y: 2 });
+  const soldier = addUnit(game, "warrior", { x: 8, y: 2 });
   const enemy = addUnit(game, "warrior", { x: 8, y: 1 }, "raiders");
-  worker.job = { kind: "guard", destination: worker.cell };
+  soldier.job = { kind: "guard", destination: soldier.cell };
   advance(game, 0.7);
-  expect(enemy.cell).toEqual(worker.cell);
-  expect(worker.hp).toBe(8);
+  expect(enemy.cell).toEqual(soldier.cell);
+  expect(soldier.hp).toBe(24);
   advance(game, 1);
-  expect(worker.hp).toBe(4);
-  expect(enemy.hp).toBe(23);
+  expect([soldier.hp, enemy.hp]).toEqual([20, 20]);
   advance(game, 1);
-  expect(worker.hp).toBe(0);
-  expect(enemy.hp).toBe(22);
+  expect([soldier.hp, enemy.hp]).toEqual([16, 16]);
   expect(enemy.cell).toEqual({ x: 8, y: 2 });
 });
 it("steals a reachable egg, escapes through the entrance, cancels hatching and ends the raid", () => {
@@ -208,7 +198,7 @@ it("rejects invalid blueprints without changing state and increments visual revi
   advance(game, 20);
   expect(game.revision).toBe(3);
 });
-it("stops on contact reached during movement, preserves a carried item there and does not credit travel as work", () => {
+it("lets an evading hauler walk through an enemy cell without dropping its item or its job", () => {
   const game = world();
   const worker = addUnit(game, "worker", { x: 8, y: 3 });
   const enemy = addUnit(game, "worker", { x: 8, y: 2 }, "raiders");
@@ -223,9 +213,8 @@ it("stops on contact reached during movement, preserves a carried item there and
   enemy.job = { kind: "attack", targetId: worker.id };
   stepGame(game);
   expect(worker.cell).toEqual({ x: 8, y: 2 });
-  expect(enemy.cell).toEqual(worker.cell);
-  expect(game.items[0]?.location).toEqual({ kind: "cell", cell: { x: 8, y: 2 } });
-  expect(worker.route).toEqual([]);
+  expect(game.items[0]?.location).toEqual({ kind: "carried", unitId: worker.id });
+  expect(worker.route).not.toEqual([]);
   expect(worker.hp).toBe(8);
 });
 it("emits only the scheduled incident events and gives subsequent waves fresh identifiers", () => {
@@ -336,9 +325,9 @@ it("resolves head-on movement in stable id order without letting opponents swap 
   expect(ours.travel).toBe(0);
   expect(enemy.travel).toBe(0);
 });
-it("stops an individually fast unit at an opponent instead of spending remaining distance past it", () => {
+it("stops an individually fast fighter at an opponent instead of spending remaining distance past it", () => {
   const game = world();
-  const ours = addUnit(game, "worker", { x: 8, y: 2 });
+  const ours = addUnit(game, "warrior", { x: 8, y: 2 });
   const enemy = addUnit(game, "warrior", { x: 8, y: 3 }, "raiders");
   ours.speed = 60;
   ours.job = { kind: "build", target: "8,6", stand: { x: 8, y: 5 } };
@@ -413,9 +402,40 @@ it("skips a dead builder and safely advances a world without a queen", () => {
 it("leaves a unit already in contact out of the auction", () => {
   const game = world();
   const item = egg(game, { x: 9, y: 3 });
-  const engaged = addUnit(game, "worker", { x: 8, y: 3 }, "raiders");
+  const engaged = addUnit(game, "warrior", { x: 8, y: 3 }, "raiders");
   const free = addUnit(game, "worker", { x: 8, y: 5 }, "raiders");
   addUnit(game, "warrior", engaged.cell);
   stepGame(game);
   expect(free.job).toMatchObject({ kind: "haul", itemId: item.id });
+});
+
+it("lets thieves slip past a single soldier and reach the brood", () => {
+  const game = world();
+  const item = egg(game, { x: 9, y: 3 });
+  addUnit(game, "warrior", { x: 8, y: 2 }).job = { kind: "guard", destination: { x: 8, y: 2 } };
+  const thieves = [
+    addUnit(game, "worker", { x: 8, y: 1 }, "raiders"),
+    addUnit(game, "worker", { x: 8, y: 1 }, "raiders"),
+  ];
+  advance(game, 7);
+  expect(item.location).toEqual({ kind: "carried", unitId: thieves[0]?.id });
+  expect(thieves[0]?.cell).toEqual({ x: 8, y: 1 });
+  expect(thieves[0]?.hp).toBe(6);
+});
+it("walks a wounded raider off the map and a wounded ant back home", () => {
+  const game = world();
+  const raider = addUnit(game, "scout", { x: 8, y: 2 }, "raiders");
+  raider.hp = 3;
+  const ant = addUnit(game, "worker", { x: 8, y: 5 });
+  ant.hp = 3;
+  stepGame(game);
+  expect(raider.job).toMatchObject({ kind: "flee" });
+  expect(ant.job).toMatchObject({ kind: "flee", destination: { x: 10, y: 3 } });
+  advance(game, 6);
+  expect(game.units).not.toContain(raider);
+  expect(ant.cell).toEqual({ x: 10, y: 3 });
+  expect(ant.job).toMatchObject({ kind: "flee" });
+  advance(game, 10);
+  expect(ant.hp).toBe(8);
+  expect(ant.fleeing).toBe(false);
 });

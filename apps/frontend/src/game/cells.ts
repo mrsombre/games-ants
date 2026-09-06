@@ -4,6 +4,7 @@ export type CellId = `${number},${number}`;
 export const COLS = 18;
 export const ROWS = 11;
 export const ENTRANCE: Cell = { x: 8, y: 1 };
+export const EXIT: Cell = { x: -1, y: 0 };
 export const HOME: Cell = { x: 10, y: 3 };
 export const key = (x: number, y: number): CellId => `${x},${y}`;
 export const cellKey = (cell: Cell) => key(cell.x, cell.y);

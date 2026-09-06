@@ -1,6 +1,6 @@
 import { cellKey, HOME, key, point } from "./cells";
 import { initialColony } from "./colony";
-import { contacts, fight } from "./combat";
+import { contacts, fight, retreat, stanceOf } from "./combat";
 import { advanceConstruction } from "./construction";
 import { advanceEggs } from "./eggs";
 import { dropCargo } from "./items";
@@ -73,7 +73,7 @@ function moveUnits(units: Unit[], seconds: number) {
         counts(id)[unit.faction]++;
         previous = id;
       }
-      return counts(id)[unit.faction === "colony" ? "raiders" : "colony"] > 0;
+      return stanceOf(unit) === "fight" && counts(id)[unit.faction === "colony" ? "raiders" : "colony"] > 0;
     };
     move(unit, seconds, sync);
     sync();
@@ -90,20 +90,20 @@ export function stepGame(game: Game, seconds = SIMULATION_STEP, random: () => nu
   advanceEggs(game, seconds);
   const navigation = new Navigation(game.colony);
   prepareJobs(game, seconds, navigation);
-  const before = contacts(game.units);
-  const engaged = new Set(before.keys());
+  const engaged = contacts(game.units).blocked;
   advanceNesting(game, seconds, navigation, engaged);
   assignTasks(game, "colony", navigation, engaged, random);
   assignTasks(game, "raiders", navigation, engaged, random);
   const moved = moveUnits(game.units, seconds);
-  const targets = contacts(game.units);
-  for (const unit of game.units) if (targets.has(unit.id)) interruptJob(game, unit);
+  const contact = contacts(game.units);
+  for (const unit of game.units) if (contact.blocked.has(unit.id)) interruptJob(game, unit);
   for (const blueprint of Object.values(game.blueprints)) blueprint.workers = 0;
   for (const unit of [...game.units]) {
-    if (unit.hp > 0 && !targets.has(unit.id) && !moved.has(unit.id))
+    if (unit.hp > 0 && !contact.blocked.has(unit.id) && !moved.has(unit.id))
       performJob(game, unit, seconds, navigation, random, events);
   }
-  fight(game.units, seconds, targets);
+  fight(game.units, seconds, contact);
+  retreat(game, navigation);
   if (queenWasAlive && queenOf(game)?.hp === 0) events.push({ kind: "queen-died" });
   for (const unit of game.units) if (unit.hp <= 0) dropCargo(game, unit);
   game.units = game.units.filter((unit) => unit.hp > 0 || unit.role === "queen");

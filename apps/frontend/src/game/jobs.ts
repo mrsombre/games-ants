@@ -8,5 +8,6 @@ export type Job =
   | { kind: "guard"; destination: Cell }
   | { kind: "wander"; destination: Cell }
   | { kind: "leave"; destination: Cell }
+  | { kind: "flee"; destination: Cell }
   | { kind: "nest"; destination: Cell };
 export type JobKind = Job["kind"];

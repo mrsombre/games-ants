@@ -121,6 +121,10 @@ export function performJob(
     case "leave":
       if (sameCell(unit.cell, job.destination)) game.units = game.units.filter((entry) => entry.id !== unit.id);
       return;
+    case "flee":
+      if (sameCell(unit.cell, job.destination) && unit.faction === "raiders")
+        game.units = game.units.filter((entry) => entry.id !== unit.id);
+      return;
     case "nest":
       if (!sameCell(unit.cell, job.destination)) return;
       unit.job = null;

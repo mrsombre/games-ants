@@ -1,4 +1,4 @@
-import { type Cell, COLS, cellKey, ENTRANCE, neighbors, point, sameCell } from "./cells";
+import { type Cell, COLS, cellKey, ENTRANCE, EXIT, neighbors, point, sameCell } from "./cells";
 import { connected } from "./colony";
 import { MAX_BUILDERS } from "./construction";
 import { eggStorageCells, queenCells } from "./eggs";
@@ -47,7 +47,7 @@ function availableOffers(game: Game, faction: Faction, navigation: Navigation, r
       offers.push(offer({ kind: "forage", phase: "outbound", exit, remaining: 0 }, exit, 80));
     }
   } else if (!enemies.length) {
-    offers.push(offer({ kind: "leave", destination: { x: -1, y: 0 } }, { x: -1, y: 0 }, 10));
+    offers.push(offer({ kind: "leave", destination: EXIT }, EXIT, 10));
   }
   const queenSeats = queenCells(game);
   const eggStorage = faction === "colony" ? eggStorageCells(game, navigation) : [];
@@ -66,11 +66,7 @@ function availableOffers(game: Game, faction: Faction, navigation: Navigation, r
       continue;
     if (faction === "colony" && item.kind === "food" && tile === "storage") continue;
     const destinations =
-      faction === "raiders"
-        ? [{ cell: { x: -1, y: 0 }, distance: 0 }]
-        : item.kind === "food"
-          ? foodStorage
-          : eggStorage;
+      faction === "raiders" ? [{ cell: EXIT, distance: 0 }] : item.kind === "food" ? foodStorage : eggStorage;
     for (const { cell, distance } of destinations) {
       if (!navigation.route(source, cell)) continue;
       const locks = [`item:${item.id}`];
@@ -181,6 +177,7 @@ export function jobValid(game: Game, unit: Unit) {
       return game.units.some((target) => present(target) && target.faction !== unit.faction);
     case "forage":
     case "leave":
+    case "flee":
       return true;
     case "wander":
       return job.destination.y === 0 || !!game.colony[cellKey(job.destination)];
