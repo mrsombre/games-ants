@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { COLS, EXIT, HOME, ROWS } from "./cells";
 import { DAY_PHASE_IDS, DAY_PHASES, type DayPhaseId, dayPhase } from "./day-cycle";
-import { jumpToPhase, pauseNarrator, setDifficulty, skipTime, startIncidentNow } from "./debug";
+import { jumpToPhase, pauseNarrator, setDifficulty, skipTime, spawnUnit, startIncidentNow } from "./debug";
 import { type GameEvent, SIMULATION_STEP } from "./model";
 import { advanceNarrator, createNarrator, incidentOf, settleIncidents } from "./narrator";
 import { addUnit, advance, world } from "./test-support";
 import { applyTool } from "./tools";
+import type { Faction, Role } from "./units";
 
 function narrated(difficulty = 1) {
   const game = world();
@@ -270,5 +272,119 @@ describe("incident", () => {
       expect(raiders(game)).toEqual([]);
       expect(game.narrator.active).toBe(null);
     }
+  });
+});
+
+describe("spawn", () => {
+  const found = (game: ReturnType<typeof narrated>, role: Role) => game.units.filter((unit) => unit.role === role);
+  it("puts a unit of the asked role in the asked cell and takes its id from the counter", () => {
+    const game = narrated();
+    const id = game.nextUnitId;
+    expect(spawnUnit(game, "warrior", 6, 4)).toBe(null);
+    expect(game.nextUnitId).toBe(id + 1);
+    const unit = found(game, "warrior")[0];
+    expect(unit).toMatchObject({ id, role: "warrior", faction: "colony", cell: { x: 6, y: 4 }, hp: 24 });
+  });
+  it("makes the unit take part in the next step: a spawned beetle bites the queen", () => {
+    const game = narrated();
+    const queen = found(game, "queen")[0];
+    expect(queen).toBeDefined();
+    expect(spawnUnit(game, "beetle", HOME.x, HOME.y)).toBe(null);
+    advance(game, 5);
+    expect(queen?.hp).toBeLessThan(queen?.maxHp ?? 0);
+  });
+  it("defaults the faction to raiders for beetle and spider and to colony for ants", () => {
+    const game = narrated();
+    for (const [role, faction] of [
+      ["beetle", "raiders"],
+      ["spider", "raiders"],
+      ["worker", "colony"],
+      ["scout", "colony"],
+      ["warrior", "colony"],
+    ] as const) {
+      expect(spawnUnit(game, role, 4, 0)).toBe(null);
+      expect(found(game, role)[0]?.faction).toBe(faction);
+    }
+  });
+  it("lets an explicit faction override the default in both directions", () => {
+    const game = narrated();
+    expect(spawnUnit(game, "beetle", 4, 0, "colony")).toBe(null);
+    expect(found(game, "beetle")[0]?.faction).toBe("colony");
+    expect(spawnUnit(game, "worker", 5, 0, "raiders")).toBe(null);
+    expect(found(game, "worker")[0]?.faction).toBe("raiders");
+  });
+  it("spawns into unbuilt ground and the unit stays there through the next steps", () => {
+    const game = narrated();
+    expect(game.colony["2,9"]).toBeUndefined();
+    expect(spawnUnit(game, "scout", 2, 9)).toBe(null);
+    advance(game, 10);
+    expect(found(game, "scout")[0]?.cell).toEqual({ x: 2, y: 9 });
+  });
+  it("ignores nest capacity: the colony grows past its free places", () => {
+    const game = narrated();
+    const before = game.units.length;
+    for (let index = 0; index < 40; index++) expect(spawnUnit(game, "worker", 8, 3)).toBe(null);
+    expect(game.units.length).toBe(before + 40);
+  });
+  it("refuses a second queen while one is alive and adds nothing", () => {
+    const game = narrated();
+    const before = game.units.length;
+    expect(spawnUnit(game, "queen", 6, 4)).toBe("Спавн: матка в колонии одна, вторую поставить нельзя");
+    expect(game.units.length).toBe(before);
+  });
+  it("allows a queen once the old one is dead", () => {
+    const game = narrated();
+    const queen = found(game, "queen")[0];
+    if (queen) queen.hp = 0;
+    expect(spawnUnit(game, "queen", 6, 4)).toBe(null);
+    expect(found(game, "queen").filter((unit) => unit.hp > 0).length).toBe(1);
+  });
+  it("accepts the service cells at both ends of the surface", () => {
+    const game = narrated();
+    for (const cell of [EXIT, { x: COLS, y: 0 }]) {
+      expect(spawnUnit(game, "warrior", cell.x, cell.y, "raiders")).toBe(null);
+    }
+    expect(found(game, "warrior").map((unit) => unit.cell)).toEqual([EXIT, { x: COLS, y: 0 }]);
+  });
+  it("refuses a cell that is neither on the map nor a service cell and adds nothing", () => {
+    const outside = `Спавн: клетка вне карты, нужна клетка сетки или служебная (-1,0) / (${COLS},0)`;
+    for (const [x, y] of [
+      [-1, 1],
+      [COLS, 1],
+      [-2, 0],
+      [COLS + 1, 0],
+      [0, -1],
+      [0, ROWS],
+      [1.5, 2],
+      [2, 1.5],
+      [Number.NaN, 0],
+    ] as const) {
+      const game = narrated();
+      const before = game.units.length;
+      expect(spawnUnit(game, "worker", x, y)).toBe(outside);
+      expect(game.units.length).toBe(before);
+    }
+  });
+  it("accepts the corners of the map grid", () => {
+    const game = narrated();
+    for (const [x, y] of [
+      [0, 0],
+      [COLS - 1, 0],
+      [0, ROWS - 1],
+      [COLS - 1, ROWS - 1],
+    ] as const)
+      expect(spawnUnit(game, "worker", x, y)).toBe(null);
+    expect(found(game, "worker").length).toBe(4);
+  });
+  it("refuses an unknown role or faction and adds nothing", () => {
+    const game = narrated();
+    expect(spawnUnit(game, "ladybug" as Role, 6, 4)).toBe(
+      "Спавн: неизвестная роль, нужна одна из worker, scout, warrior, queen, beetle, spider",
+    );
+    expect(spawnUnit(game, "worker", 6, 4, "neutral" as Faction)).toBe(
+      "Спавн: неизвестная фракция, нужна одна из colony, raiders",
+    );
+    expect(game.units.length).toBe(1);
+    expect(game.nextUnitId).toBe(narrated().nextUnitId);
   });
 });
