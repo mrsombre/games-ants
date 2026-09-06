@@ -3,6 +3,7 @@ import { forageWeight } from "./items";
 import type { GameEvent } from "./model";
 import {
   advanceNarrator,
+  bossRoles,
   colonyAnts,
   createNarrator,
   FORAGE_MAX_SECONDS,
@@ -120,6 +121,7 @@ it("keeps the catalog v1 kinds, classes and sizes", () => {
   expect(incidents.map((incident) => [incident.kind, incident.class])).toEqual([
     ["raid", "threat"],
     ["thieves", "threat"],
+    ["boss", "threat"],
     ["rich-forage", "boon"],
     ["food-nearby", "boon"],
   ]);
@@ -135,11 +137,14 @@ it("keeps the catalog v1 kinds, classes and sizes", () => {
   }
   incidentOf("raid").start(game, 2);
   incidentOf("thieves").start(game, 2);
+  incidentOf("boss").start(game, 2);
   expect(game.units.filter((unit) => unit.faction === "raiders").map((unit) => unit.role)).toEqual([
     "worker",
     "warrior",
     "worker",
     "scout",
+    "beetle",
+    "warrior",
   ]);
 });
 it("raises the food-nearby weight only while food is short", () => {
@@ -350,6 +355,46 @@ it("alternates wave composition per incident kind", () => {
   expect(raidRoles(5)).toEqual(["worker", "warrior", "worker", "warrior", "worker"]);
   expect(thievesRoles(4)).toEqual(["worker", "scout", "worker", "scout"]);
   expect(raidRoles(0)).toEqual([]);
+});
+it("leads a boss wave with the beetle and scales its escort from zero to two warriors", () => {
+  expect(bossRoles(0)).toEqual(["beetle"]);
+  expect(bossRoles(1)).toEqual(["beetle"]);
+  expect(bossRoles(2)).toEqual(["beetle", "warrior"]);
+  expect(bossRoles(3)).toEqual(["beetle", "warrior", "warrior"]);
+});
+it("grows the boss escort with colony strength and caps it at three raiders", () => {
+  const game = narrated();
+  const boss = incidentOf("boss");
+  expect(boss.size(game)).toBe(1);
+  for (const cell of [
+    { x: 7, y: 2 },
+    { x: 7, y: 2 },
+  ])
+    food(game, cell, "caterpillar");
+  addUnit(game, "warrior");
+  addUnit(game, "warrior");
+  addUnit(game, "warrior");
+  addUnit(game, "warrior");
+  addUnit(game, "warrior");
+  addUnit(game, "warrior");
+  expect(strength(game)).toBe(22);
+  expect(boss.size(game)).toBe(1);
+  for (let i = 0; i < 3; i++) addUnit(game, "warrior");
+  expect(boss.size(game)).toBe(2);
+  for (let i = 0; i < 60; i++) addUnit(game, "warrior");
+  expect(boss.size(game)).toBe(3);
+});
+it("raises the boss weight once the colony fields two warriors and still spares a weak colony", () => {
+  const alone = { consumptions: 3, warriors: 1, queenHurt: false, freeEggs: 0, lastLoss: 0, weak: false };
+  const armed = { ...alone, warriors: narratorConfig.bossWarriors };
+  const boss = incidentOf("boss");
+  expect(boss.weight(alone)).toBeCloseTo(narratorConfig.bossWeight, 8);
+  expect(boss.weight(armed)).toBeCloseTo(narratorConfig.bossWeight + narratorConfig.bossArmedWeight, 8);
+  expect(boss.weight(armed)).toBeGreaterThan(boss.weight(alone));
+  expect(incidentWeight(boss, { ...armed, weak: true })).toBeCloseTo(
+    boss.weight(armed) * narratorConfig.mercyThreat,
+    8,
+  );
 });
 it("hands work the default forage table and speeds it up or enriches it under a boon", () => {
   const game = narrated();

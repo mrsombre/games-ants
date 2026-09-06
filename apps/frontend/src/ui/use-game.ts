@@ -106,14 +106,15 @@ const toolSuccess: Record<Tool, string> = {
 const incidentEnd: Record<IncidentKind, string> = {
   raid: "Набег окончен. Муравьи возвращаются к делам.",
   thieves: "Воры ушли. Расплод снова под присмотром.",
+  boss: "Жук повержен. Колония выстояла.",
   "rich-forage": "Богатый участок опустел.",
   "food-nearby": "Еда рядом с гнездом закончилась.",
 };
 function incidentWarning(incident: IncidentKind, seconds: number) {
   const when = `через ${Math.round(seconds)} с`;
-  return incident === "thieves"
-    ? `Разведка заметила воров ${when}. Прикрой расплод!`
-    : `Враги подходят ${when}. Готовь воинов!`;
+  if (incident === "thieves") return `Разведка заметила воров ${when}. Прикрой расплод!`;
+  if (incident === "boss") return `Из леса ползёт жук ${when}. Собирай всех воинов!`;
+  return `Враги подходят ${when}. Готовь воинов!`;
 }
 function incidentStart(incident: IncidentKind, size: number) {
   switch (incident) {
@@ -121,6 +122,10 @@ function incidentStart(incident: IncidentKind, size: number) {
       return `Атака! Врагов: ${size}. Воины идут на перехват.`;
     case "thieves":
       return `Воры в гнезде! Их ${size}, они охотятся за кладками.`;
+    case "boss":
+      return size > 1
+        ? `Жук у входа! С ним воинов: ${size - 1}. Бейте по очереди.`
+        : "Жук у входа! Панцирь толстый — держите фронт.";
     case "rich-forage":
       return "Разведчики нашли богатый участок: гусеницы попадаются чаще.";
     case "food-nearby":

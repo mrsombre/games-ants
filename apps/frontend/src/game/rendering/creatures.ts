@@ -126,7 +126,8 @@ function drawAnt(sprite: Graphics, ant: Unit, time: number, carryingEgg: boolean
   sprite.clear();
   if (ant.role === "queen") return;
   const { size } = roles[ant.role];
-  const color = ant.faction === "raiders" ? 0xff7900 : roles[ant.role].color;
+  const beetle = ant.role === "beetle";
+  const color = beetle || ant.faction === "colony" ? roles[ant.role].color : 0xff7900;
   const moving = ant.route.length > 0 || (ant.role === "worker" && ant.working);
   for (const side of [-1, 1])
     for (let leg = 0; leg < 3; leg++) {
@@ -144,6 +145,15 @@ function drawAnt(sprite: Graphics, ant: Unit, time: number, carryingEgg: boolean
     .fill(color)
     .circle(8, 0, ant.role === "warrior" ? 5 : 3.5)
     .fill(color);
+  if (beetle) {
+    sprite
+      .ellipse(-6, 0, 11, 8)
+      .fill(color)
+      .stroke({ color: 0x2b1d47, width: 1 })
+      .moveTo(-17, 0)
+      .lineTo(2, 0)
+      .stroke({ color: 0x2b1d47, width: 1.2 });
+  }
   sprite.moveTo(10, -2).lineTo(15, -6).moveTo(10, 2).lineTo(15, 6).stroke({ color, width: 1.2 });
   sprite.circle(9, -1.5, 1).fill(0x241f1c);
   if (ant.role === "worker") sprite.rect(-3, -3, 4, 6).fill(0xf3d581);
@@ -153,6 +163,7 @@ function drawAnt(sprite: Graphics, ant: Unit, time: number, carryingEgg: boolean
   }
   if (ant.role === "warrior")
     sprite.moveTo(11, -3).lineTo(15, -2).moveTo(11, 3).lineTo(15, 2).stroke({ color: 0xf4c1a3, width: 2 });
+  if (beetle) sprite.moveTo(11, -4).lineTo(19, -7).moveTo(11, 4).lineTo(19, 7).stroke({ color: 0x2b1d47, width: 3 });
   if (cargo) drawScoutCargo(sprite, cargo);
   if (ant.hp < ant.maxHp) {
     sprite.roundRect(-7, -15, 14, 2.5, 1).fill(0x56382d);

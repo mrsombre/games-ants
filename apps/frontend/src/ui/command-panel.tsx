@@ -140,7 +140,7 @@ function Spawning({ blocks, spawnAnt }: Pick<Props, "blocks" | "spawnAnt">) {
         ВЫВЕСТИ ИЗ ЯЙЦА
       </span>
       <fieldset className="command-buttons" aria-label="Выведение муравьёв">
-        {(Object.keys(roles) as SpawnRole[]).map((role) => {
+        {(Object.keys(spawnCost) as SpawnRole[]).map((role) => {
           const block = blocks[role];
           const title = `${roles[role].label} — ${block ? spawnBlockLabel[block] : `${spawnCost[role]} еды, яйцо и место в гнезде`}`;
           return (

@@ -118,6 +118,25 @@ it("keeps a third fighter of a side out of the front: it neither hits nor takes 
   fight(units, 1, contact);
   expect(units.map((unit) => unit.hp)).toEqual([20, 20, 24, 20, 20, 24]);
 });
+it("holds the front limit against a beetle: only two soldiers bite it and it never flees", () => {
+  const beetle = createUnit(1, "beetle", "raiders", { x: 8, y: 2 });
+  const soldiers = [2, 3, 4, 5].map((id) => createUnit(id, "warrior", "colony", beetle.cell));
+  const units = [beetle, ...soldiers];
+  const contact = contacts(units);
+  expect([...contact.targets.keys()].sort((a, b) => a - b)).toEqual([1, 2, 3]);
+  expect([...contact.blocked].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5]);
+  fight(units, 1, contact);
+  expect(beetle.hp).toBe(72);
+  expect(soldiers.map((unit) => unit.hp)).toEqual([18, 24, 24, 24]);
+  expect(stanceOf(beetle)).toBe("fight");
+  const game = world();
+  game.units.push(beetle);
+  beetle.hp = 1;
+  retreat(game, new Navigation(game.colony));
+  expect(beetle.fleeing).toBe(false);
+  expect(beetle.job).toBeNull();
+  expect(stanceOf(beetle)).toBe("fight");
+});
 it("focuses spare front slots on the same opponent when the other side is outnumbered", () => {
   const ours = [1, 2].map((id) => createUnit(id, "warrior", "colony", { x: 8, y: 2 }));
   const enemy = createUnit(3, "warrior", "raiders", { x: 8, y: 2 });

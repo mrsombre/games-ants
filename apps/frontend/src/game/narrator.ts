@@ -3,9 +3,9 @@ import { type Game, type GameEvent, queenOf } from "./model";
 import { spawnWave } from "./raids";
 import { spawnableEggs } from "./spawning";
 import { foodStock } from "./storage";
-import { type SpawnRole, spawnCost } from "./units";
+import { type RaidRole, type SpawnRole, spawnCost } from "./units";
 
-export type IncidentKind = "raid" | "thieves" | "rich-forage" | "food-nearby";
+export type IncidentKind = "raid" | "thieves" | "boss" | "rich-forage" | "food-nearby";
 export type IncidentClass = "threat" | "boon";
 export type TensionPhase = "buildup" | "peak" | "recovery";
 export type Narrator = {
@@ -39,6 +39,9 @@ export const narratorConfig = {
   weakLoss: 0.34,
   mercyThreat: 0.4,
   mercyBoon: 2,
+  bossWeight: 0.4,
+  bossArmedWeight: 1.1,
+  bossWarriors: 2,
 };
 
 export function nextRandom(narrator: Narrator) {
@@ -100,6 +103,10 @@ export const raidRoles = (size: number): SpawnRole[] =>
   Array.from({ length: size }, (_, index) => (index % 2 === 0 ? "worker" : "warrior"));
 export const thievesRoles = (size: number): SpawnRole[] =>
   Array.from({ length: size }, (_, index) => (index % 2 === 0 ? "worker" : "scout"));
+export const bossRoles = (size: number): RaidRole[] => [
+  "beetle",
+  ...Array.from({ length: Math.max(0, size - 1) }, () => "warrior" as const),
+];
 const waveSize = (game: Game, share: number, cap: number) =>
   Math.max(1, Math.min(cap, Math.ceil(strength(game) * share * game.narrator.difficulty)));
 function startBoon(game: Game, kind: IncidentKind) {
@@ -127,6 +134,15 @@ export const incidents: Incident[] = [
     weight: (signals) => 0.5 + 0.25 * signals.freeEggs,
     size: (game) => waveSize(game, 0.08, 6),
     start: (game, size) => spawnWave(game, thievesRoles(size), nextRandom(game.narrator)),
+  },
+  {
+    kind: "boss",
+    class: "threat",
+    weight: (signals) =>
+      narratorConfig.bossWeight +
+      (signals.warriors >= narratorConfig.bossWarriors ? narratorConfig.bossArmedWeight : 0),
+    size: (game) => waveSize(game, 0.04, 3),
+    start: (game, size) => spawnWave(game, bossRoles(size), nextRandom(game.narrator)),
   },
   {
     kind: "rich-forage",
