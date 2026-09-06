@@ -2,7 +2,7 @@
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "testRunner": "vitest",
   "vitest": {
-    "configFile": "apps/frontend/vitest.config.ts",
+    "configFile": "apps/frontend/vitest.config.js",
     "dir": "apps/frontend"
   },
   "mutate": [

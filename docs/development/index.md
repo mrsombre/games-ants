@@ -16,7 +16,7 @@ Production: [games-ants.warmvibes.workers.dev](https://games-ants.warmvibes.work
 не являются частью bootstrap этой игры.
 
 Вместо двух процессов frontend/backend используется официальный `@cloudflare/vite-plugin`.
-В конфигурации frontend указан абсолютный `configPath`, вычисленный относительно `vite.config.ts`,
+В конфигурации frontend указан абсолютный `configPath`, вычисленный относительно `vite.config.js`,
 на корневой `wrangler.jsonc`. Worker выполняется локально в workerd, а не в Node.js mock-сервере.
 Плагин поддерживает dev, build и preview для общего приложения.
 [Cloudflare: Vite plugin](https://developers.cloudflare.com/workers/vite-plugin/).
