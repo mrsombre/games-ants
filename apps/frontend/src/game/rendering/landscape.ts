@@ -67,8 +67,4 @@ function drawEntrance(landscape: Graphics) {
   }
   landscape.rect(entranceX - 8, HORIZON - 9, 16, GROUND - HORIZON + 9).fill(0x796246);
   landscape.ellipse(entranceX, HORIZON - 9, 14, 13).fill(0x302a26);
-  for (const x of [167, 735, 778]) {
-    landscape.roundRect(x, HORIZON - 12, 4, 12, 2).fill(0xded3a9);
-    landscape.ellipse(x + 2, HORIZON - 12, 11, 5).fill(0xc98555);
-  }
 }
