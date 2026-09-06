@@ -1,5 +1,5 @@
 import { roles } from "../game/rendering/appearance";
-import type { HatchRole } from "../game/units";
+import type { SpawnRole } from "../game/units";
 
 export function FoodIcon({ className }: { className?: string }) {
   return (
@@ -22,7 +22,7 @@ export function NestIcon({ className }: { className?: string }) {
   );
 }
 
-export function AntHead({ antRole, className }: { antRole: HatchRole; className?: string }) {
+export function AntHead({ antRole, className }: { antRole: SpawnRole; className?: string }) {
   return (
     <svg
       className={className}

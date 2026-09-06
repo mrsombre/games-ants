@@ -3,7 +3,7 @@ import type { Job, JobKind } from "./jobs";
 
 export type Faction = "colony" | "raiders";
 export type Role = "worker" | "scout" | "warrior" | "queen";
-export type HatchRole = Exclude<Role, "queen">;
+export type SpawnRole = Exclude<Role, "queen">;
 export type Unit = {
   readonly id: number;
   readonly faction: Faction;
@@ -29,7 +29,7 @@ export const traits: Record<Role, Traits> = {
   warrior: { hp: 24, bite: 4, speed: 2, jobs: ["attack", "wander", "leave"] },
   queen: { hp: 24, bite: 4, speed: 0.25, jobs: ["nest"] },
 };
-export const hatchCost: Record<HatchRole, number> = { worker: 1, scout: 2, warrior: 3 };
+export const spawnCost: Record<SpawnRole, number> = { worker: 1, scout: 2, warrior: 3 };
 export function createUnit(id: number, role: Role, faction: Faction, cell: Cell): Unit {
   const { hp, bite, speed } = traits[role];
   return {

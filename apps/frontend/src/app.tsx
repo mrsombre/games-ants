@@ -1,9 +1,8 @@
-import { hasNestRoom, nestCapacity, nestFree } from "./game/housing";
 import { queenOf } from "./game/model";
 import { roles } from "./game/rendering/appearance";
-import { spawnableEggs } from "./game/spawning";
+import { nestCapacity, nestFree, type SpawnBlock, spawnBlock } from "./game/spawning";
 import { foodStock } from "./game/storage";
-import type { HatchRole } from "./game/units";
+import type { SpawnRole } from "./game/units";
 import { CommandPanel } from "./ui/command-panel";
 import { AntHead, FoodIcon, NestIcon } from "./ui/icons";
 import { useGame } from "./ui/use-game";
@@ -13,6 +12,9 @@ export function App() {
   const food = foodStock(game);
   const capacity = nestCapacity(game);
   const free = Math.max(0, nestFree(game));
+  const blocks = Object.fromEntries(
+    (Object.keys(roles) as SpawnRole[]).map((role) => [role, spawnBlock(game, role)]),
+  ) as Record<SpawnRole, SpawnBlock | null>;
   const ants = game.units.filter((unit) => unit.faction === "colony" && unit.role !== "queen");
   const enemies = game.units.filter((unit) => unit.faction === "raiders");
   const scoutsAway = ants.filter((ant) => ant.job?.kind === "forage" && ant.job.phase === "away");
@@ -20,7 +22,7 @@ export function App() {
     <main className="game">
       <header className="topbar">
         <section className="ant-counts" aria-label="Муравьи по типам">
-          {(Object.keys(roles) as HatchRole[]).map((role) => {
+          {(Object.keys(roles) as SpawnRole[]).map((role) => {
             const count = ants.filter((ant) => ant.role === role).length;
             return (
               <div
@@ -82,14 +84,7 @@ export function App() {
           </div>
         </div>
       </section>
-      <CommandPanel
-        tool={tool}
-        setTool={setTool}
-        food={food}
-        hasEggSource={spawnableEggs(game).length > 0}
-        hasNestRoom={hasNestRoom(game)}
-        spawnAnt={spawnAnt}
-      />
+      <CommandPanel tool={tool} setTool={setTool} blocks={blocks} spawnAnt={spawnAnt} />
     </main>
   );
 }

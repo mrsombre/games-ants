@@ -1,12 +1,20 @@
 import { type Cell, cellKey } from "./cells";
-import { hasNestRoom } from "./housing";
 import { type Item, itemReserved } from "./items";
 import { EPSILON, type Game } from "./model";
-import { consumeFood } from "./storage";
-import { createUnit, type HatchRole, hatchCost } from "./units";
+import { consumeFood, foodStock } from "./storage";
+import { createUnit, type SpawnRole, spawnCost } from "./units";
 
-export type Spawn = { eggId: number; role: HatchRole; progress: number };
+export type Spawn = { eggId: number; role: SpawnRole; progress: number };
+export type SpawnBlock = "nest" | "egg" | "food";
 export const SPAWN_SECONDS = 10;
+
+// Each nest cell houses one ant; the queen lives in her own seat and never takes a bed.
+export const nestCapacity = (game: Game) => Object.values(game.colony).filter((tile) => tile === "nest").length;
+export const nestPopulation = (game: Game) =>
+  game.units.filter((unit) => unit.faction === "colony" && unit.role !== "queen" && unit.hp > 0).length +
+  game.spawns.length;
+export const nestFree = (game: Game) => nestCapacity(game) - nestPopulation(game);
+
 export function spawnableEggs(game: Game) {
   const reserved = new Set(game.spawns.map((spawn) => spawn.eggId));
   return game.items.filter(
@@ -18,13 +26,20 @@ export function spawnableEggs(game: Game) {
       !reserved.has(item.id),
   );
 }
-export function startSpawn(game: Game, role: HatchRole, random: () => number = Math.random) {
-  if (!hasNestRoom(game)) return false;
+export function spawnBlock(game: Game, role: SpawnRole): SpawnBlock | null {
+  if (nestFree(game) <= 0) return "nest";
+  if (!spawnableEggs(game).length) return "egg";
+  if (foodStock(game) < spawnCost[role]) return "food";
+  return null;
+}
+export function startSpawn(game: Game, role: SpawnRole, random: () => number = Math.random): SpawnBlock | null {
+  const block = spawnBlock(game, role);
+  if (block) return block;
   const eggs = spawnableEggs(game);
-  const egg = eggs[Math.floor(random() * eggs.length)];
-  if (!egg || !consumeFood(game, hatchCost[role])) return false;
+  const egg = eggs[Math.floor(random() * eggs.length)] as (typeof eggs)[number];
+  consumeFood(game, spawnCost[role]);
   game.spawns.push({ eggId: egg.id, role, progress: 0 });
-  return true;
+  return null;
 }
 export function advanceSpawns(game: Game, seconds: number) {
   game.spawns = game.spawns.filter((spawn) => {

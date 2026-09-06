@@ -1,6 +1,6 @@
 import { type Cell, COLS, cellKey, ENTRANCE, neighbors, point, sameCell } from "./cells";
 import { connected } from "./colony";
-import { eggStorageCells, nurseryCells } from "./eggs";
+import { eggStorageCells, queenCells } from "./eggs";
 import { canCarry, itemReserved } from "./items";
 import type { Job } from "./jobs";
 import { type Game, homeOf } from "./model";
@@ -44,7 +44,7 @@ function availableOffers(game: Game, faction: Faction, navigation: Navigation, r
   } else if (!enemies.length) {
     offers.push(offer({ kind: "leave", destination: { x: -1, y: 0 } }, { x: -1, y: 0 }, 10));
   }
-  const nursery = nurseryCells(game);
+  const queenSeats = queenCells(game);
   const eggStorage = faction === "colony" ? eggStorageCells(game, navigation) : [];
   const foodStorage = faction === "colony" ? foodStorageCells(game).map((cell) => ({ cell, distance: 0 })) : [];
   for (const item of game.items) {
@@ -56,7 +56,7 @@ function availableOffers(game: Game, faction: Faction, navigation: Navigation, r
       faction === "colony" &&
       item.kind === "egg" &&
       tile === "nest" &&
-      !nursery.some((cell) => sameCell(cell, source))
+      !queenSeats.some((cell) => sameCell(cell, source))
     )
       continue;
     if (faction === "colony" && item.kind === "food" && tile === "storage") continue;

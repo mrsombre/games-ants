@@ -261,7 +261,7 @@ it.each([1, 17, 73])(
     planBuild(game, 7, 6, "nest");
     planBuild(game, 9, 6, "storage");
     for (let tick = 0; tick < 1000; tick++) {
-      if (tick % 100 === 0 && startSpawn(game, "worker", random)) balance--;
+      if (tick % 100 === 0 && !startSpawn(game, "worker", random)) balance--;
       for (const event of stepGame(game, 0.05, random)) {
         if (event.kind === "scout-delivered") balance += event.food;
         expect(["scout-delivered", "food-discarded", "attack-started", "attack-ended", "queen-died"]).toContain(

@@ -1,17 +1,17 @@
 import type { BuildTool, Tool } from "../game/colony";
 import { buildSeconds } from "../game/construction";
 import { roles } from "../game/rendering/appearance";
+import type { SpawnBlock } from "../game/spawning";
 import { STORAGE_SLOTS } from "../game/storage";
-import { type HatchRole, hatchCost } from "../game/units";
+import { type SpawnRole, spawnCost } from "../game/units";
 import { AntHead, FoodIcon } from "./icons";
+import { spawnBlockLabel } from "./spawn-block";
 
 type Props = {
   tool: Tool;
   setTool: (tool: Tool) => void;
-  food: number;
-  hasEggSource: boolean;
-  hasNestRoom: boolean;
-  spawnAnt: (role: HatchRole) => void;
+  blocks: Record<SpawnRole, SpawnBlock | null>;
+  spawnAnt: (role: SpawnRole) => void;
 };
 const tools: Record<Tool, { label: string; title: string; description: string }> = {
   corridor: {
@@ -64,7 +64,7 @@ function ToolIcon({ tool }: { tool: BuildTool }) {
     </svg>
   );
 }
-export function CommandPanel({ tool, setTool, food, hasEggSource, hasNestRoom, spawnAnt }: Props) {
+export function CommandPanel({ tool, setTool, blocks, spawnAnt }: Props) {
   return (
     <section className="command-panel" aria-label="Строительство">
       <div className="command-inner">
@@ -126,42 +126,41 @@ export function CommandPanel({ tool, setTool, food, hasEggSource, hasNestRoom, s
           </svg>
           <span>{tools.demolish.label}</span>
         </button>
-        <Spawning food={food} hasEggSource={hasEggSource} hasNestRoom={hasNestRoom} spawnAnt={spawnAnt} />
+        <Spawning blocks={blocks} spawnAnt={spawnAnt} />
       </div>
     </section>
   );
 }
 
-function Spawning({
-  food,
-  hasEggSource,
-  hasNestRoom,
-  spawnAnt,
-}: Pick<Props, "food" | "hasEggSource" | "hasNestRoom" | "spawnAnt">) {
+function Spawning({ blocks, spawnAnt }: Pick<Props, "blocks" | "spawnAnt">) {
   return (
     <div className="command-group recruitment">
       <span className="group-label" aria-hidden="true">
         ВЫВЕСТИ ИЗ ЯЙЦА
       </span>
       <fieldset className="command-buttons" aria-label="Выведение муравьёв">
-        {(Object.keys(roles) as HatchRole[]).map((role) => (
-          <button
-            type="button"
-            className="command-button"
-            key={role}
-            disabled={food < hatchCost[role] || !hasEggSource || !hasNestRoom}
-            onClick={() => spawnAnt(role)}
-            aria-label={`${roles[role].label} — ${hatchCost[role]} еды, яйцо и место в гнезде`}
-            title={`${roles[role].label} — ${hatchCost[role]} еды, яйцо и место в гнезде`}
-          >
-            <AntHead antRole={role} />
-            <span>{roles[role].label}</span>
-            <span className="cost" aria-hidden="true">
-              <FoodIcon />
-              {hatchCost[role]}
-            </span>
-          </button>
-        ))}
+        {(Object.keys(roles) as SpawnRole[]).map((role) => {
+          const block = blocks[role];
+          const title = `${roles[role].label} — ${block ? spawnBlockLabel[block] : `${spawnCost[role]} еды, яйцо и место в гнезде`}`;
+          return (
+            <button
+              type="button"
+              className="command-button"
+              key={role}
+              disabled={!!block}
+              onClick={() => spawnAnt(role)}
+              aria-label={title}
+              title={title}
+            >
+              <AntHead antRole={role} />
+              <span>{roles[role].label}</span>
+              <span className="cost" aria-hidden="true">
+                <FoodIcon />
+                {spawnCost[role]}
+              </span>
+            </button>
+          );
+        })}
       </fieldset>
     </div>
   );

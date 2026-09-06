@@ -10,11 +10,11 @@ import { advanceNesting } from "./nesting";
 import { advanceAttack, attackDelay, MAX_ENEMIES } from "./raids";
 import { advanceSpawns } from "./spawning";
 import { assignTasks } from "./tasks";
-import { createUnit, type HatchRole, present, type Unit } from "./units";
+import { createUnit, present, type SpawnRole, type Unit } from "./units";
 import { interruptJob, performJob, prepareJobs } from "./work";
 
 export function createGame(random: () => number = Math.random): Game {
-  const initialRoles: HatchRole[] = ["worker", "worker", "worker", "scout", "warrior"];
+  const initialRoles: SpawnRole[] = ["worker", "worker", "worker", "scout", "warrior"];
   const cells = Object.keys(initialColony)
     .filter((id) => id !== cellKey(HOME))
     .map(point);

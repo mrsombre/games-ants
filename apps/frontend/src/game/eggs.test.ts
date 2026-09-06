@@ -1,10 +1,10 @@
 import { expect, it } from "vitest";
-import { advanceEggs, eggStorageCells, nurseryCells } from "./eggs";
+import { advanceEggs, eggStorageCells, queenCells } from "./eggs";
 import { queenOf } from "./model";
 import { Navigation } from "./navigation";
 import { addUnit, advance, egg, world } from "./test-support";
 
-it("lays every thirty seconds, pauses with both nursery cells occupied and preserves elapsed time", () => {
+it("lays every thirty seconds, pauses with both queen cells occupied and preserves elapsed time", () => {
   const game = world();
   advance(game, 12);
   const first = egg(game, { x: 9, y: 3 });
@@ -20,7 +20,7 @@ it("lays every thirty seconds, pauses with both nursery cells occupied and prese
   expect(game.items[2]?.location).toEqual({ kind: "cell", cell: { x: 9, y: 3 } });
   expect(game.eggTimer).toBeCloseTo(0, 8);
 });
-it("requires a living queen and completed nursery rooms, including delivery reservations", () => {
+it("requires a living queen and completed queen cells, including delivery reservations", () => {
   const game = world();
   const worker = addUnit(game);
   worker.job = { kind: "haul", itemId: 99, destination: { x: 9, y: 3 }, phase: "delivery" };
@@ -77,7 +77,7 @@ it("finds only the colony queen and safely handles her absence", () => {
   advanceEggs(game, 30);
   expect(game.items).toEqual([]);
   expect(queenOf(game)).toBeUndefined();
-  expect(nurseryCells(game)).toEqual([]);
+  expect(queenCells(game)).toEqual([]);
   expect(eggStorageCells(game, new Navigation(game.colony))).toEqual([]);
 });
 
@@ -94,16 +94,16 @@ it("preserves excess laying time and excludes disconnected rooms from storage", 
   ]);
 });
 
-it("lays only from a nest and never counts storage cells as nursery or egg storage", () => {
+it("lays only from a nest and never counts storage cells as queen cells or egg storage", () => {
   const game = world();
   const queen = queenOf(game);
   if (!queen) throw new Error("queen");
   queen.cell = { x: 7, y: 2 };
   advanceEggs(game, 30);
   expect(game.items).toEqual([]);
-  expect(nurseryCells(game)).toEqual([]);
+  expect(queenCells(game)).toEqual([]);
   game.colony["5,2"] = "corridor";
   game.colony["4,2"] = "nest";
-  expect(nurseryCells(game)).toEqual([]);
+  expect(queenCells(game)).toEqual([]);
   expect(eggStorageCells(game, new Navigation(game.colony)).map(({ cell }) => cell)).not.toContainEqual({ x: 6, y: 2 });
 });

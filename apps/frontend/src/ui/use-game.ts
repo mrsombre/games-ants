@@ -2,16 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import type { Tool } from "../game/colony";
 import { planBuild } from "../game/construction";
 import { demolish } from "../game/demolition";
-import { hasNestRoom } from "../game/housing";
 import { type FoodKind, foodValue } from "../game/items";
 import { SIMULATION_STEP } from "../game/model";
 import { roles } from "../game/rendering/appearance";
 import { createScene } from "../game/scene";
 import { createGame, stepGame } from "../game/simulation";
 import { SPAWN_SECONDS, startSpawn } from "../game/spawning";
-import { foodStock } from "../game/storage";
-import { type HatchRole, hatchCost } from "../game/units";
+import type { SpawnRole } from "../game/units";
 import { GAMEPLAY_TIP_INTERVAL, gameplayTips } from "./gameplay-tips";
+import { spawnBlockLabel } from "./spawn-block";
 
 export function useGame() {
   const host = useRef<HTMLDivElement>(null);
@@ -90,16 +89,10 @@ export function useGame() {
     );
     return () => window.clearInterval(interval);
   }, []);
-  function spawnAnt(role: HatchRole) {
-    const started = startSpawn(game, role);
+  function spawnAnt(role: SpawnRole) {
+    const block = startSpawn(game, role);
     setMessage(
-      started
-        ? `${roles[role].label}: яйцо выбрано, вылупление через ${SPAWN_SECONDS} секунд`
-        : !hasNestRoom(game)
-          ? "В гнезде нет свободного места — построй или расширь гнездо"
-          : foodStock(game) < hatchCost[role]
-            ? "Не хватает еды — дождись разведчика"
-            : "Нет свободной кладки — дождись яйца или завершения переноса",
+      block ? spawnBlockLabel[block] : `${roles[role].label}: яйцо выбрано, вылупление через ${SPAWN_SECONDS} секунд`,
     );
     refresh((n) => n + 1);
   }
