@@ -1,6 +1,9 @@
 # Scratch space for temporary files
 .tmp/
 
+# Local Markdown issue tracker
+.scratch/
+
 node_modules/
 dist/
 coverage/
