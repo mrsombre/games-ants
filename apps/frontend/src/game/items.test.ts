@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { carriedItem, dropCargo, pickUp } from "./items";
-import { addUnit, egg, world } from "./test-support";
+import { addUnit, egg, food, world } from "./test-support";
 
 it("enforces role, physical pickup, one item per carrier and one carrier per item", () => {
   const game = world();
@@ -48,16 +48,9 @@ it("keeps other hatches and carriers intact when a scout picks up food or a thie
     { eggId: item.id, role: "worker", progress: 0 },
     { eggId: retained.id, role: "scout", progress: 0.2 },
   ];
-  const food = {
-    id: 100,
-    kind: "food" as const,
-    food: "apple" as const,
-    portions: 1,
-    location: { kind: "cell" as const, cell: scout.cell },
-  };
-  game.items.push(food);
-  expect(pickUp(game, worker, food)).toBe(false);
-  expect(pickUp(game, scout, food)).toBe(true);
+  const apple = food(game, scout.cell);
+  expect(pickUp(game, worker, apple)).toBe(false);
+  expect(pickUp(game, scout, apple)).toBe(true);
   expect(carriedItem(game, worker)).toBeUndefined();
   const thief = addUnit(game, "worker", worker.cell, "raiders");
   expect(pickUp(game, thief, item)).toBe(true);

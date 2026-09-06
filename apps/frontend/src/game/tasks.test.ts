@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { cellKey } from "./cells";
 import { planBuild } from "./construction";
 import { Navigation } from "./navigation";
 import { assignTasks } from "./tasks";
@@ -41,7 +42,7 @@ it("reserves each item and destination once across repeated faction auctions", (
   auction(game);
   expect(game.units.flatMap((unit) => (unit.job?.kind === "haul" ? [unit.job] : []))).toEqual(jobs);
   expect(new Set(jobs.map((job) => job.itemId)).size).toBe(2);
-  expect(new Set(jobs.map((job) => `${job.destination.x},${job.destination.y}`))).toEqual(new Set(["6,4", "7,4"]));
+  expect(new Set(jobs.map((job) => cellKey(job.destination)))).toEqual(new Set(["6,4", "7,4"]));
   const thief = addUnit(game, "worker", { x: 8, y: 3 }, "raiders");
   auction(game, "raiders");
   expect(thief.job?.kind).toBe("attack");
