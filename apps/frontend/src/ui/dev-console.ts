@@ -1,5 +1,9 @@
+import type { BuildTool } from "../game/colony";
 import type { DayPhaseId } from "../game/day-cycle";
 import {
+  type BuildOptions,
+  buildCell,
+  clearBuilt,
   jumpToPhase,
   pauseNarrator,
   setDifficulty,
@@ -71,6 +75,18 @@ export function installDevConsole(game: Game, refresh: () => void, showMessage: 
       signature: "dev.food(n)",
       about: "Привести запас еды на складе к n порциям: целое неотрицательное число",
       run: commanded((amount: number) => setFood(game, amount)),
+    },
+    build: {
+      signature: "dev.build(x, y, tile, { force })",
+      about: "Поставить готовый corridor | nest | storage мгновенно; force снимает правила размещения",
+      run: commanded((x: number, y: number, tile: BuildTool, options?: BuildOptions) =>
+        buildCell(game, x, y, tile, options),
+      ),
+    },
+    clear: {
+      signature: "dev.clear(x, y, { force })",
+      about: "Снести клетку мгновенно; force снимает правила сноса",
+      run: commanded((x: number, y: number, options?: BuildOptions) => clearBuilt(game, x, y, options)),
     },
     incident: {
       signature: "dev.incident(kind, size?)",

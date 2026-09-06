@@ -48,6 +48,14 @@ export function demolitionError(game: Game, x: number, y: number): string | null
 export function demolish(game: Game, x: number, y: number) {
   const error = demolitionError(game, x, y);
   if (error) return error;
+  razeCell(game, x, y);
+  return null;
+}
+
+// Clears the cell and settles its aftermath: units standing there step back into a connected
+// neighbour, routes and building jobs through it are interrupted. Items left on the cell stay
+// where they are, in the ground.
+export function razeCell(game: Game, x: number, y: number) {
   const id = key(x, y);
   const tile = game.colony[id];
   const retreat = neighbors({ x, y }).find((p) => connected(tile, game.colony[key(p.x, p.y)], p.y === y));
@@ -61,5 +69,4 @@ export function demolish(game: Game, x: number, y: number) {
     }
   }
   for (const blueprint of Object.values(game.blueprints)) blueprint.workers = 0;
-  return null;
 }

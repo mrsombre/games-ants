@@ -1,5 +1,8 @@
-import { COLS, cellKey, isCell } from "./cells";
+import { COLS, cellKey, isCell, key } from "./cells";
+import { type BuildTool, placementError } from "./colony";
+import { finishBlueprint, placeBlueprint, plannedColony } from "./construction";
 import { DAY_PHASE_IDS, DAY_PHASE_SECONDS, type DayPhaseId } from "./day-cycle";
+import { demolitionError, razeCell } from "./demolition";
 import { type Game, type GameEvent, SIMULATION_STEP } from "./model";
 import { DAY_SECONDS, type IncidentKind, incidents, startIncident } from "./narrator";
 import { stepGame } from "./simulation";
@@ -89,5 +92,38 @@ export function setFood(game: Game, amount: number): string | null {
       portions: 1,
       location: { kind: "cell", cell },
     });
+  return null;
+}
+
+const BUILD_TOOLS: readonly BuildTool[] = ["corridor", "nest", "storage"];
+// Guard kept even under `force`: the top two rows are the entrance and the grid ends at the map.
+function groundError(x: number, y: number, what: string): string | null {
+  if (!isCell(x, y)) return `${what}: клетка вне карты`;
+  if (y <= 1) return `${what}: ряды 0 и 1 закрыты`;
+  return null;
+}
+
+export type BuildOptions = { force?: boolean };
+
+export function buildCell(
+  game: Game,
+  x: number,
+  y: number,
+  tile: BuildTool,
+  options: BuildOptions = {},
+): string | null {
+  if (!BUILD_TOOLS.includes(tile)) return `Постройка: неизвестный тип, нужен один из ${BUILD_TOOLS.join(", ")}`;
+  const error = options.force ? groundError(x, y, "Постройка") : placementError(plannedColony(game), x, y, tile);
+  if (error) return error;
+  const id = key(x, y);
+  placeBlueprint(game, id, tile);
+  finishBlueprint(game, id);
+  return null;
+}
+
+export function clearBuilt(game: Game, x: number, y: number, options: BuildOptions = {}): string | null {
+  const error = options.force ? groundError(x, y, "Снос") : demolitionError(game, x, y);
+  if (error) return error;
+  razeCell(game, x, y);
   return null;
 }

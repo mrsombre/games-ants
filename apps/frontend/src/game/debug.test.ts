@@ -1,12 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { COLS, EXIT, HOME, ROWS } from "./cells";
+import { COLS, cellKey, EXIT, HOME, ROWS } from "./cells";
+import type { BuildTool } from "./colony";
 import { DAY_PHASE_IDS, DAY_PHASES, type DayPhaseId, dayPhase } from "./day-cycle";
-import { jumpToPhase, pauseNarrator, setDifficulty, setFood, skipTime, spawnUnit, startIncidentNow } from "./debug";
+import {
+  buildCell,
+  clearBuilt,
+  jumpToPhase,
+  pauseNarrator,
+  setDifficulty,
+  setFood,
+  skipTime,
+  spawnUnit,
+  startIncidentNow,
+} from "./debug";
 import { type GameEvent, SIMULATION_STEP } from "./model";
 import { advanceNarrator, createNarrator, incidentOf, settleIncidents } from "./narrator";
 import { foodStock, STORAGE_SLOTS, storedFood } from "./storage";
-import { addUnit, advance, food, world } from "./test-support";
-import { applyTool } from "./tools";
+import { addUnit, advance, egg, food, world } from "./test-support";
+import { applyTool, toolError } from "./tools";
 import type { Faction, Role } from "./units";
 
 function narrated(difficulty = 1) {
@@ -447,6 +458,147 @@ describe("food", () => {
       const game = narrated();
       expect(setFood(game, amount)).toBe("Еда: нужно целое неотрицательное число");
       expect(game.items).toEqual([]);
+    }
+  });
+});
+
+describe("build", () => {
+  it("places a finished cell at once: no blueprint is left and the revision grows", () => {
+    const game = narrated();
+    const before = game.revision;
+    expect(buildCell(game, 8, 6, "corridor")).toBe(null);
+    expect(game.colony["8,6"]).toBe("corridor");
+    expect(game.blueprints).toEqual({});
+    expect(game.revision).toBeGreaterThan(before);
+  });
+  it("refuses by the regular placement rules with the same reason as the tool", () => {
+    for (const [x, y, tile] of [
+      [5, 9, "nest"],
+      [2, 4, "corridor"],
+      [8, 3, "corridor"],
+      [8, 1, "corridor"],
+      [-1, 4, "corridor"],
+    ] as const) {
+      const game = narrated();
+      const expected = toolError(game, tile, x, y);
+      const colony = { ...game.colony };
+      expect(expected).not.toBe(null);
+      expect(buildCell(game, x, y, tile)).toBe(expected);
+      expect(game.colony).toEqual(colony);
+      expect(game.revision).toBe(0);
+    }
+  });
+  it("creates with force a cell the placement rules would reject and grows the revision", () => {
+    const game = narrated();
+    expect(toolError(game, "nest", 2, 9)).not.toBe(null);
+    expect(buildCell(game, 2, 9, "nest", { force: true })).toBe(null);
+    expect(game.colony["2,9"]).toBe("nest");
+    expect(game.revision).toBeGreaterThan(0);
+  });
+  it("replaces an existing tile with force", () => {
+    const game = narrated();
+    expect(buildCell(game, 8, 4, "storage", { force: true })).toBe(null);
+    expect(game.colony["8,4"]).toBe("storage");
+  });
+  it("refuses the top two rows and cells off the map even with force", () => {
+    for (const [x, y] of [
+      [8, 0],
+      [8, 1],
+    ] as const) {
+      const game = narrated();
+      expect(buildCell(game, x, y, "corridor", { force: true })).toBe("Постройка: ряды 0 и 1 закрыты");
+      expect(game.revision).toBe(0);
+    }
+    for (const [x, y] of [
+      [-1, 4],
+      [COLS, 4],
+      [4, ROWS],
+      [4.5, 4],
+    ] as const) {
+      const game = narrated();
+      expect(buildCell(game, x, y, "corridor", { force: true })).toBe("Постройка: клетка вне карты");
+      expect(game.colony[`${x},${y}`]).toBe(undefined);
+      expect(game.revision).toBe(0);
+    }
+  });
+  it("refuses an unknown tile with and without force", () => {
+    for (const force of [false, true]) {
+      const game = narrated();
+      expect(buildCell(game, 8, 6, "tunnel" as BuildTool, { force })).toBe(
+        "Постройка: неизвестный тип, нужен один из corridor, nest, storage",
+      );
+      expect(game.revision).toBe(0);
+    }
+  });
+  it("leaves a built cell workable: ants use it in the simulation", () => {
+    const game = narrated();
+    expect(buildCell(game, 8, 6, "corridor")).toBe(null);
+    expect(applyTool(game, "corridor", 8, 7)).toBe(null);
+  });
+});
+
+describe("clear", () => {
+  it("demolishes at once and grows the revision", () => {
+    const game = narrated();
+    const before = game.revision;
+    expect(clearBuilt(game, 8, 5)).toBe(null);
+    expect(game.colony["8,5"]).toBe(undefined);
+    expect(game.revision).toBeGreaterThan(before);
+  });
+  it("refuses by the regular demolition rules with the same reason as the tool", () => {
+    for (const [x, y] of [
+      [10, 3],
+      [8, 3],
+      [4, 4],
+      [8, 1],
+      [-1, 4],
+    ] as const) {
+      const game = narrated();
+      const expected = toolError(game, "demolish", x, y);
+      expect(expected).not.toBe(null);
+      expect(clearBuilt(game, x, y)).toBe(expected);
+      expect(game.revision).toBe(0);
+    }
+  });
+  it("removes a protected cell with force and grows the revision", () => {
+    const game = narrated();
+    expect(toolError(game, "demolish", 10, 3)).not.toBe(null);
+    expect(clearBuilt(game, 10, 3, { force: true })).toBe(null);
+    expect(game.colony["10,3"]).toBe(undefined);
+    expect(game.revision).toBeGreaterThan(0);
+  });
+  it("settles the aftermath with force: a unit standing there steps into a neighbour", () => {
+    const game = narrated();
+    const unit = addUnit(game, "worker", { x: 10, y: 3 });
+    expect(clearBuilt(game, 10, 3, { force: true })).toBe(null);
+    expect(unit.cell).not.toEqual({ x: 10, y: 3 });
+    expect(game.colony[cellKey(unit.cell)]).toBeDefined();
+  });
+  it("leaves items of a forced clear in the ground", () => {
+    const game = narrated();
+    const item = egg(game, { x: 10, y: 3 });
+    expect(clearBuilt(game, 10, 3, { force: true })).toBe(null);
+    expect(game.items).toEqual([item]);
+  });
+  it("refuses the top two rows and cells off the map even with force", () => {
+    for (const [x, y] of [
+      [8, 0],
+      [8, 1],
+    ] as const) {
+      const game = narrated();
+      expect(clearBuilt(game, x, y, { force: true })).toBe("Снос: ряды 0 и 1 закрыты");
+      expect(game.colony["8,1"]).toBe("corridor");
+      expect(game.revision).toBe(0);
+    }
+    for (const [x, y] of [
+      [-1, 4],
+      [COLS, 4],
+      [4, ROWS],
+      [4.5, 4],
+    ] as const) {
+      const game = narrated();
+      expect(clearBuilt(game, x, y, { force: true })).toBe("Снос: клетка вне карты");
+      expect(game.revision).toBe(0);
     }
   });
 });
