@@ -14,6 +14,7 @@ import {
 } from "../game/debug";
 import type { Game, GameEvent } from "../game/model";
 import type { IncidentKind } from "../game/narrator";
+import { attachSimulationLog, getSimulationLog, runLoggedCommand, snapshot } from "../game/simulation-log";
 import type { Faction, Role } from "../game/units";
 import { eventMessage } from "./event-message";
 
@@ -21,10 +22,16 @@ type Command = { readonly signature: string; readonly about: string; readonly ru
 
 // Kept on `window` and never removed, so the object outlives a hot module replacement.
 export function installDevConsole(game: Game, refresh: () => void, showMessage: (text: string) => void) {
+  const alreadyConnected = !!getSimulationLog(game);
+  attachSimulationLog(game, (line) => console.log(line));
   const commanded =
-    <A extends unknown[]>(run: (...args: A) => string | null) =>
+    <A extends unknown[]>(
+      name: string,
+      params: (...args: A) => Record<string, unknown>,
+      run: (...args: A) => string | null,
+    ) =>
     (...args: A) => {
-      const reason = run(...args);
+      const reason = runLoggedCommand(game, "dev", name, params(...args), () => run(...args));
       refresh();
       if (reason) console.warn(reason);
       return reason;
@@ -33,73 +40,122 @@ export function installDevConsole(game: Game, refresh: () => void, showMessage: 
     help: {
       signature: "dev.help()",
       about: "Напечатать список команд",
-      run: () => {
-        for (const command of Object.values(commands)) console.log(`${command.signature} — ${command.about}`);
-        return null;
-      },
+      run: commanded(
+        "help",
+        () => ({}),
+        () => {
+          for (const command of Object.values(commands)) console.log(`${command.signature} — ${command.about}`);
+          return null;
+        },
+      ),
     },
     pause: {
       signature: "dev.pause()",
       about: "Заглушить нарратора (темп 0)",
-      run: commanded(() => pauseNarrator(game)),
+      run: commanded(
+        "pause",
+        () => ({}),
+        () => pauseNarrator(game),
+      ),
     },
     difficulty: {
       signature: "dev.difficulty(n)",
       about: "Задать множитель темпа нарратора: конечное неотрицательное число",
-      run: commanded((value: number) => setDifficulty(game, value)),
+      run: commanded(
+        "difficulty",
+        (value: number) => ({ value }),
+        (value: number) => setDifficulty(game, value),
+      ),
     },
     day: {
       signature: "dev.day(n, phase)",
       about: "Телепортировать в начало фазы morning | noon | evening | night дня n, только вперёд",
-      run: commanded((day: number, phase: DayPhaseId) => jumpToPhase(game, day, phase)),
+      run: commanded(
+        "day",
+        (day: number, phase: DayPhaseId) => ({ day, phase }),
+        (day: number, phase: DayPhaseId) => jumpToPhase(game, day, phase),
+      ),
     },
     skip: {
       signature: "dev.skip(seconds)",
       about: "Прокрутить симуляцию на seconds секунд (не больше 600), события печатаются в консоль",
-      run: commanded((seconds: number) => {
-        const events: GameEvent[] = [];
-        const reason = skipTime(game, seconds, events);
-        const messages = events.map(eventMessage);
-        for (const message of messages) console.log(message);
-        const last = messages.at(-1);
-        if (last) showMessage(last);
-        return reason;
-      }),
+      run: commanded(
+        "skip",
+        (seconds: number) => ({ seconds }),
+        (seconds: number) => {
+          const events: GameEvent[] = [];
+          const reason = skipTime(game, seconds, events);
+          const last = events.at(-1);
+          const message = last ? eventMessage(last) : undefined;
+          if (message) showMessage(message);
+          return reason;
+        },
+      ),
     },
     spawn: {
       signature: "dev.spawn(role, x, y, faction?)",
       about: "Поставить юнита в клетку карты или служебную; фракция по умолчанию — raiders для beetle и spider",
-      run: commanded((role: Role, x: number, y: number, faction?: Faction) => spawnUnit(game, role, x, y, faction)),
+      run: commanded(
+        "spawn",
+        (role: Role, x: number, y: number, faction?: Faction) => ({ role, x, y, faction }),
+        (role: Role, x: number, y: number, faction?: Faction) => spawnUnit(game, role, x, y, faction),
+      ),
     },
     food: {
       signature: "dev.food(n)",
       about: "Привести запас еды на складе к n порциям: целое неотрицательное число",
-      run: commanded((amount: number) => setFood(game, amount)),
+      run: commanded(
+        "food",
+        (amount: number) => ({ amount }),
+        (amount: number) => setFood(game, amount),
+      ),
     },
     build: {
       signature: "dev.build(x, y, tile, { force })",
       about: "Поставить готовый corridor | nest | storage мгновенно; force снимает правила размещения",
-      run: commanded((x: number, y: number, tile: BuildTool, options?: BuildOptions) =>
-        buildCell(game, x, y, tile, options),
+      run: commanded(
+        "build",
+        (x: number, y: number, tile: BuildTool, options?: BuildOptions) => ({ x, y, tile, options }),
+        (x: number, y: number, tile: BuildTool, options?: BuildOptions) => buildCell(game, x, y, tile, options),
       ),
     },
     clear: {
       signature: "dev.clear(x, y, { force })",
       about: "Снести клетку мгновенно; force снимает правила сноса",
-      run: commanded((x: number, y: number, options?: BuildOptions) => clearBuilt(game, x, y, options)),
+      run: commanded(
+        "clear",
+        (x: number, y: number, options?: BuildOptions) => ({ x, y, options }),
+        (x: number, y: number, options?: BuildOptions) => clearBuilt(game, x, y, options),
+      ),
     },
     incident: {
       signature: "dev.incident(kind, size?)",
       about: "Запустить инцидент немедленно; размер по умолчанию — штатная формула инцидента",
-      run: commanded((kind: IncidentKind, size?: number) => {
-        const events: GameEvent[] = [];
-        const reason = startIncidentNow(game, kind, events, size);
-        for (const event of events) showMessage(eventMessage(event));
-        return reason;
-      }),
+      run: commanded(
+        "incident",
+        (kind: IncidentKind, size?: number) => ({ kind, size }),
+        (kind: IncidentKind, size?: number) => {
+          const events: GameEvent[] = [];
+          const reason = startIncidentNow(game, kind, events, size);
+          for (const event of events) showMessage(eventMessage(event));
+          return reason;
+        },
+      ),
+    },
+    snapshot: {
+      signature: "dev.snapshot()",
+      about: "Напечатать неизменяемый снимок текущей партии",
+      run: commanded(
+        "snapshot",
+        () => ({}),
+        () => {
+          snapshot(game);
+          return null;
+        },
+      ),
     },
   };
   const api = Object.fromEntries(Object.entries(commands).map(([name, command]) => [name, command.run]));
   Object.assign(globalThis, { dev: api });
-  console.log("dev console: dev.help()");
+  if (!alreadyConnected) console.log("dev console: dev.help()");
 }

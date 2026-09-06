@@ -8,6 +8,7 @@ import type { Job } from "./jobs";
 import { type Game, homeOf } from "./model";
 import { forageAllowed } from "./narrator";
 import { type Navigation, setRoute } from "./navigation";
+import { logTaskEnded, logTaskStarted } from "./simulation-log";
 import { spawnClaimed } from "./spawning";
 import { foodStorageCells, storageCapacity } from "./storage";
 import { type Faction, isSurface, present, traits, type Unit } from "./units";
@@ -167,10 +168,12 @@ export function assignTasks(
   const locks = new Set<string>();
   for (const bid of bids) {
     if (assigned.has(bid.unit.id) || bid.offer.locks.some((lock) => locks.has(lock))) continue;
+    if (bid.unit.job?.kind === "wander") logTaskEnded(game, bid.unit, bid.unit.job, "cancelled", "reassigned");
     const job = { ...bid.offer.job };
     bid.unit.job = job;
     bid.unit.idleWait = 0;
     setRoute(bid.unit, bid.route);
+    logTaskStarted(game, bid.unit, job);
     assigned.add(bid.unit.id);
     for (const lock of bid.offer.locks) locks.add(lock);
   }

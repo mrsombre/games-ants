@@ -1,6 +1,7 @@
 import { cellKey, EXIT } from "./cells";
 import { EPSILON, type Game, homeOf } from "./model";
 import { type Navigation, setRoute } from "./navigation";
+import { logTaskEnded, logTaskStarted, logUnitFleeStarted } from "./simulation-log";
 import { type Faction, present, type Stance, traits, type Unit } from "./units";
 import { interruptJob } from "./work";
 
@@ -8,6 +9,7 @@ export const HIT_SECONDS = 1;
 export const HEAL_SECONDS = 2;
 export const FRONT_LIMIT = 2;
 export type Contact = { targets: Map<number, Unit>; blocked: Set<number> };
+export type Attack = { attacker: Unit; target: Unit; damage: number };
 export function stanceOf(unit: Unit): Stance {
   return unit.fleeing ? "evade" : traits[unit.role].stance;
 }
@@ -49,6 +51,7 @@ export function contacts(units: readonly Unit[]): Contact {
 }
 export function fight(units: readonly Unit[], seconds: number, contact = contacts(units)) {
   const damage = new Map<Unit, number>();
+  const attacks: Attack[] = [];
   for (const unit of units) {
     if (unit.hp <= 0) continue;
     const target = contact.targets.get(unit.id);
@@ -69,8 +72,10 @@ export function fight(units: readonly Unit[], seconds: number, contact = contact
     if (unit.attackWait + EPSILON < HIT_SECONDS) continue;
     unit.attackWait = Math.max(0, unit.attackWait - HIT_SECONDS);
     damage.set(target, (damage.get(target) ?? 0) + unit.bite);
+    attacks.push({ attacker: unit, target, damage: unit.bite });
   }
   for (const [unit, amount] of damage) unit.hp = Math.max(0, unit.hp - amount);
+  return attacks;
 }
 export function retreat(game: Game, navigation: Navigation) {
   for (const unit of game.units) {
@@ -78,15 +83,20 @@ export function retreat(game: Game, navigation: Navigation) {
     if (unit.fleeing) {
       if (unit.hp < unit.maxHp) continue;
       unit.fleeing = false;
-      if (unit.job?.kind === "flee") unit.job = null;
+      if (unit.job?.kind === "flee") {
+        logTaskEnded(game, unit, unit.job, "completed");
+        unit.job = null;
+      }
       continue;
     }
     if (unit.hp >= unit.maxHp * traits[unit.role].flee) continue;
     unit.fleeing = true;
-    interruptJob(game, unit);
+    interruptJob(game, unit, "fleeing");
     const destination = unit.faction === "colony" ? homeOf(game) : EXIT;
     unit.job = { kind: "flee", destination };
     const route = navigation.from(unit, destination);
     if (route) setRoute(unit, route);
+    logUnitFleeStarted(game, unit);
+    logTaskStarted(game, unit, unit.job);
   }
 }

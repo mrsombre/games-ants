@@ -3,6 +3,7 @@ import { roomSpan } from "./colony";
 import { layingInProgress } from "./eggs";
 import { EPSILON, type Game, queenOf } from "./model";
 import { type Navigation, setRoute } from "./navigation";
+import { logTaskStarted } from "./simulation-log";
 import type { Unit } from "./units";
 
 export const NEST_SECONDS = 180;
@@ -67,5 +68,6 @@ export function advanceNesting(game: Game, seconds: number, navigation: Navigati
   if (!seat || !route) return;
   queen.job = { kind: "nest", destination: seat };
   setRoute(queen, route);
+  logTaskStarted(game, queen, queen.job);
   game.eggTimer = 0;
 }

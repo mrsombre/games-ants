@@ -1,5 +1,6 @@
 import { type Cell, sameCell } from "./cells";
 import type { Game } from "./model";
+import { logItemDropped, logItemPickedUp } from "./simulation-log";
 import type { Unit } from "./units";
 
 export type FoodKind = "apple" | "mushroom" | "caterpillar";
@@ -37,10 +38,14 @@ export function pickUp(game: Game, unit: Unit, item: Item) {
   )
     return false;
   item.location = { kind: "carried", unitId: unit.id };
+  logItemPickedUp(game, item, unit);
   return true;
 }
-export function dropCargo(game: Game, unit: Unit) {
+export function dropCargo(game: Game, unit: Unit, reason = "interrupted") {
   const item = carriedItem(game, unit);
-  if (item) item.location = { kind: "cell", cell: unit.cell };
+  if (item) {
+    item.location = { kind: "cell", cell: unit.cell };
+    if (reason !== "delivered") logItemDropped(game, item, unit, reason);
+  }
   return item;
 }

@@ -2,6 +2,13 @@ import { type Cell, cellKey } from "./cells";
 import { isFlooded } from "./flood";
 import { type Item, itemReserved } from "./items";
 import { EPSILON, type Game } from "./model";
+import {
+  logItemConsumed,
+  logSpawnCancelled,
+  logSpawnCompleted,
+  logSpawnOrdered,
+  logUnitSpawned,
+} from "./simulation-log";
 import { consumeFood, foodStock } from "./storage";
 import { createUnit, type SpawnRole, spawnCost } from "./units";
 
@@ -39,18 +46,26 @@ export function startSpawn(game: Game, role: SpawnRole, random: () => number = M
   if (block) return block;
   const eggs = spawnableEggs(game);
   const egg = eggs[Math.floor(random() * eggs.length)] as (typeof eggs)[number];
-  consumeFood(game, spawnCost[role]);
+  consumeFood(game, spawnCost[role], "spawn");
   game.spawns.push({ eggId: egg.id, role, progress: 0 });
+  logSpawnOrdered(game, egg.id, role);
   return null;
 }
 export function advanceSpawns(game: Game, seconds: number) {
   game.spawns = game.spawns.filter((spawn) => {
     const egg = game.items.find((item) => item.id === spawn.eggId && item.kind === "egg");
-    if (egg?.location.kind !== "cell") return false;
+    if (egg?.location.kind !== "cell") {
+      logSpawnCancelled(game, spawn.eggId, spawn.role, egg ? "egg_stolen" : "egg_lost");
+      return false;
+    }
     spawn.progress = Math.min(1, spawn.progress + seconds / SPAWN_SECONDS);
     if (spawn.progress + EPSILON < 1) return true;
+    logItemConsumed(game, egg, 1, "hatching");
     game.items = game.items.filter((item) => item.id !== egg.id);
-    game.units.push(createUnit(game.nextUnitId++, spawn.role, "colony", egg.location.cell));
+    logSpawnCompleted(game, spawn.eggId, spawn.role);
+    const unit = createUnit(game.nextUnitId++, spawn.role, "colony", egg.location.cell);
+    game.units.push(unit);
+    logUnitSpawned(game, unit);
     return false;
   });
 }

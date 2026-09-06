@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { SIMULATION_STEP } from "../game/model";
 import { createScene } from "../game/scene";
 import { createGame, stepGame } from "../game/simulation";
+import { runLoggedCommand } from "../game/simulation-log";
 import { startSpawn } from "../game/spawning";
 import { applyTool, type Tool } from "../game/tools";
 import type { SpawnRole } from "../game/units";
@@ -24,7 +25,11 @@ export function useGame() {
     let instance: Awaited<ReturnType<typeof createScene>> | undefined;
     let frame = 0;
     void createScene(host.current, (x, y) => {
-      applyTool(game, currentTool.current, x, y);
+      const selectedTool = currentTool.current;
+      const name = selectedTool === "demolish" ? "demolish" : "build";
+      runLoggedCommand(game, "ui", name, { x, y, ...(selectedTool === "demolish" ? {} : { tile: selectedTool }) }, () =>
+        applyTool(game, selectedTool, x, y),
+      );
       refresh((n) => n + 1);
     })
       .then((result) => {
@@ -78,7 +83,7 @@ export function useGame() {
     return () => window.clearInterval(interval);
   }, []);
   function spawnAnt(role: SpawnRole) {
-    startSpawn(game, role);
+    runLoggedCommand(game, "ui", "spawn", { role }, () => startSpawn(game, role));
     refresh((n) => n + 1);
   }
   return { host, game, tool, setTool, tip: gameplayTips[tipIndex], error, ready, landscapeName, spawnAnt };

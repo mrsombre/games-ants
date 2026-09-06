@@ -2,6 +2,7 @@ import { cellKey, neighbors, point, sameCell } from "./cells";
 import { isFlooded } from "./flood";
 import { EPSILON, type Game, queenOf } from "./model";
 import type { Navigation } from "./navigation";
+import { logItemSpawned } from "./simulation-log";
 
 export const EGG_SECONDS = 30;
 export function roomCellOccupied(game: Game, id: string) {
@@ -35,7 +36,9 @@ export function advanceEggs(game: Game, seconds: number) {
   game.eggTimer += seconds;
   for (const cell of available) {
     if (game.eggTimer + EPSILON < EGG_SECONDS) break;
-    game.items.push({ id: game.nextItemId++, kind: "egg", location: { kind: "cell", cell } });
+    const item = { id: game.nextItemId++, kind: "egg" as const, location: { kind: "cell" as const, cell } };
+    game.items.push(item);
+    logItemSpawned(game, item);
     game.eggTimer = Math.max(0, game.eggTimer - EGG_SECONDS);
   }
   game.eggTimer = Math.min(game.eggTimer, EGG_SECONDS);

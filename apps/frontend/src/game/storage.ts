@@ -2,6 +2,7 @@ import { type Cell, cellKey, point } from "./cells";
 import { isFlooded } from "./flood";
 import type { Item } from "./items";
 import type { Game } from "./model";
+import { logItemConsumed } from "./simulation-log";
 
 export const STORAGE_SLOTS = 3;
 type StoredFood = Item & { kind: "food"; location: { kind: "cell"; cell: Cell } };
@@ -43,7 +44,7 @@ export const storageCapacity = (game: Game) =>
     (sum, [id, tile]) => sum + (tile === "storage" && !isFlooded(game, id) ? freeSlots(game, id) : 0),
     0,
   );
-export function consumeFood(game: Game, amount: number) {
+export function consumeFood(game: Game, amount: number, reason = "consumed") {
   if (foodStock(game) < amount) return false;
   let remaining = amount;
   for (const item of storedFood(game)) {
@@ -51,6 +52,7 @@ export function consumeFood(game: Game, amount: number) {
     const eaten = Math.min(item.portions, remaining);
     item.portions -= eaten;
     remaining -= eaten;
+    logItemConsumed(game, item, eaten, reason);
   }
   game.items = game.items.filter((item) => item.kind !== "food" || item.portions > 0);
   return true;

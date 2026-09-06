@@ -3,6 +3,7 @@ import { recedeFlood, startFlood } from "./flood";
 import { type FoodKind, forageWeight } from "./items";
 import { type Game, type GameEvent, queenOf } from "./model";
 import { spawnWave } from "./raids";
+import { logIncidentEnded, logIncidentStarted, logIncidentWarning } from "./simulation-log";
 import { spawnableEggs } from "./spawning";
 import { foodStock } from "./storage";
 import { type RaidRole, type SpawnRole, spawnCost } from "./units";
@@ -253,6 +254,7 @@ export function startIncident(game: Game, kind: IncidentKind, size: number, even
     }
   }
   events.push({ kind: "incident-started", incident: kind, size: started });
+  logIncidentStarted(game, kind, started);
 }
 const allowedClasses: Record<TensionPhase, readonly IncidentClass[]> = {
   buildup: ["threat", "boon"],
@@ -289,11 +291,13 @@ export function advanceNarrator(game: Game, seconds: number, events: GameEvent[]
   const delay = between(narrator, narratorConfig.warnMinSeconds, narratorConfig.warnMaxSeconds);
   narrator.pending = { incident: incident.kind, size, at: game.elapsedSeconds + delay };
   events.push({ kind: "incident-warned", incident: incident.kind, seconds: delay });
+  logIncidentWarning(game, incident.kind, delay);
 }
 export function settleIncidents(game: Game, events: GameEvent[]) {
   const narrator = game.narrator;
   if (narrator.boon && game.elapsedSeconds >= narrator.boon.until) {
     events.push({ kind: "incident-ended", incident: narrator.boon.kind });
+    logIncidentEnded(game, narrator.boon.kind);
     narrator.boon = null;
   }
   const effect = narrator.effect;
@@ -305,6 +309,7 @@ export function settleIncidents(game: Game, events: GameEvent[]) {
     const survivors = colonyAnts(game).length;
     narrator.lastLoss = narrator.census > 0 ? Math.max(0, (narrator.census - survivors) / narrator.census) : 0;
     events.push({ kind: "incident-ended", incident: narrator.active });
+    logIncidentEnded(game, narrator.active);
     narrator.active = null;
   }
 }

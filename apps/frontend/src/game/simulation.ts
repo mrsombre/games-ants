@@ -9,9 +9,10 @@ import { type Game, type GameEvent, queenOf, SIMULATION_STEP } from "./model";
 import { advanceNarrator, createNarrator, settleIncidents } from "./narrator";
 import { move, Navigation } from "./navigation";
 import { advanceNesting } from "./nesting";
+import { logArrived, logTaskEnded, logUnitAttack, logUnitDied } from "./simulation-log";
 import { advanceSpawns } from "./spawning";
 import { assignTasks } from "./tasks";
-import { createUnit, present, type SpawnRole, type Unit } from "./units";
+import { createUnit, present, type SpawnRole } from "./units";
 import { interruptJob, performJob, prepareJobs } from "./work";
 
 export function createGame(random: () => number = Math.random, seed = Math.floor(random() * 4294967296)): Game {
@@ -52,7 +53,8 @@ export function createGame(random: () => number = Math.random, seed = Math.floor
     deliveries: 0,
   };
 }
-function moveUnits(units: Unit[], seconds: number) {
+function moveUnits(game: Game, seconds: number) {
+  const units = game.units;
   const occupied = new Map<string, { colony: number; raiders: number }>();
   const moved = new Set<number>();
   const counts = (id: string) => {
@@ -67,6 +69,7 @@ function moveUnits(units: Unit[], seconds: number) {
   for (const unit of [...units].sort((a, b) => a.id - b.id)) {
     if (!present(unit) || !unit.route.length) continue;
     moved.add(unit.id);
+    const hadRoute = unit.route.length > 0;
     let previous = cellKey(unit.cell);
     const sync = () => {
       const id = cellKey(unit.cell);
@@ -79,6 +82,7 @@ function moveUnits(units: Unit[], seconds: number) {
     };
     move(unit, seconds, sync);
     sync();
+    if (hadRoute && !unit.route.length) logArrived(game, unit);
   }
   return moved;
 }
@@ -96,7 +100,7 @@ export function stepGame(game: Game, seconds = SIMULATION_STEP, random: () => nu
   advanceNesting(game, seconds, navigation, engaged);
   assignTasks(game, "colony", navigation, engaged, random);
   assignTasks(game, "raiders", navigation, engaged, random);
-  const moved = moveUnits(game.units, seconds);
+  const moved = moveUnits(game, seconds);
   const contact = contacts(game.units);
   for (const unit of game.units) if (contact.blocked.has(unit.id)) interruptJob(game, unit);
   for (const blueprint of Object.values(game.blueprints)) blueprint.workers = 0;
@@ -104,10 +108,17 @@ export function stepGame(game: Game, seconds = SIMULATION_STEP, random: () => nu
     if (unit.hp > 0 && !contact.blocked.has(unit.id) && !moved.has(unit.id))
       performJob(game, unit, seconds, navigation, random, events);
   }
-  fight(game.units, seconds, contact);
+  const aliveBeforeFight = new Set(game.units.filter((unit) => unit.hp > 0).map((unit) => unit.id));
+  const attacks = fight(game.units, seconds, contact);
+  for (const attack of attacks) logUnitAttack(game, attack.attacker, attack.target, attack.damage);
+  for (const unit of game.units) if (aliveBeforeFight.has(unit.id) && unit.hp <= 0) logUnitDied(game, unit);
   retreat(game, navigation);
   if (queenWasAlive && queenOf(game)?.hp === 0) events.push({ kind: "queen-died" });
-  for (const unit of game.units) if (unit.hp <= 0) dropCargo(game, unit);
+  for (const unit of game.units)
+    if (unit.hp <= 0) {
+      if (unit.job) logTaskEnded(game, unit, unit.job, "cancelled", "died");
+      dropCargo(game, unit, "died");
+    }
   game.units = game.units.filter((unit) => unit.hp > 0 || unit.role === "queen");
   advanceConstruction(game, seconds);
   advanceSpawns(game, seconds);

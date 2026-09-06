@@ -2,6 +2,7 @@ import { type CellId, cellKey, key, neighbors, point } from "./cells";
 import { connected, roomSpan } from "./colony";
 import type { Game } from "./model";
 import { nestCells } from "./nesting";
+import { logItemDestroyed, logSpawnCancelled } from "./simulation-log";
 import { interruptJob } from "./work";
 
 export const FLOOD_SECONDS = 120;
@@ -35,6 +36,11 @@ export function startFlood(game: Game, size: number, roll: number) {
       .filter((item) => item.location.kind === "cell" && isFlooded(game, cellKey(item.location.cell)))
       .map((item) => item.id),
   );
+  for (const item of game.items)
+    if (drowned.has(item.id))
+      logItemDestroyed(game, item, "flood", item.location.kind === "cell" ? cellKey(item.location.cell) : undefined);
+  for (const spawn of game.spawns)
+    if (drowned.has(spawn.eggId)) logSpawnCancelled(game, spawn.eggId, spawn.role, "flood");
   game.items = game.items.filter((item) => !drowned.has(item.id));
   game.spawns = game.spawns.filter((spawn) => !drowned.has(spawn.eggId));
   for (const unit of game.units) {
@@ -45,12 +51,12 @@ export function startFlood(game: Game, size: number, roll: number) {
           connected(tile, game.colony[key(cell.x, cell.y)], cell.y === unit.cell.y) && !isFlooded(game, cellKey(cell)),
       );
       if (dry) unit.cell = dry;
-      interruptJob(game, unit);
+      interruptJob(game, unit, "flood");
     } else if (
       unit.route.some((cell) => isFlooded(game, cellKey(cell))) ||
       (unit.job?.kind === "haul" && drowned.has(unit.job.itemId))
     ) {
-      interruptJob(game, unit);
+      interruptJob(game, unit, "flood");
     }
   }
   return cells.length;

@@ -1,6 +1,13 @@
 import { key } from "./cells";
 import { type BuildTool, type Colony, placementError } from "./colony";
 import { EPSILON, type Game } from "./model";
+import {
+  logConstructionCancelled,
+  logConstructionCompleted,
+  logConstructionDemolished,
+  logConstructionOrdered,
+  logTaskEnded,
+} from "./simulation-log";
 
 export type Blueprint = { tile: BuildTool; progress: number; workers: number };
 export const buildSeconds: Record<BuildTool, number> = { corridor: 20, nest: 30, storage: 30 };
@@ -16,20 +23,33 @@ function bumpRevision(game: Game) {
 export function placeBlueprint(game: Game, id: string, tile: BuildTool) {
   game.blueprints[id] = { tile, progress: 0, workers: 0 };
   bumpRevision(game);
+  logConstructionOrdered(game, id, tile);
 }
 
 export function finishBlueprint(game: Game, id: string) {
   const blueprint = game.blueprints[id];
   if (!blueprint) return;
+  for (const unit of game.units)
+    if (unit.job?.kind === "build" && unit.job.target === id) logTaskEnded(game, unit, unit.job, "completed");
   game.colony[id] = blueprint.tile;
   delete game.blueprints[id];
   bumpRevision(game);
+  logConstructionCompleted(game, id, blueprint.tile);
 }
 
 export function clearCell(game: Game, id: string) {
+  const blueprint = game.blueprints[id];
+  const tile = game.colony[id];
+  if (blueprint) {
+    logConstructionCancelled(game, id, blueprint.tile, "demolition");
+    for (const unit of game.units)
+      if (unit.job?.kind === "build" && unit.job.target === id)
+        logTaskEnded(game, unit, unit.job, "cancelled", "demolition");
+  }
   delete game.colony[id];
   delete game.blueprints[id];
   bumpRevision(game);
+  if (tile) logConstructionDemolished(game, id, tile);
 }
 
 export function planBuild(game: Game, x: number, y: number, tile: BuildTool) {

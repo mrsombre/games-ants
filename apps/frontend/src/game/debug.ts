@@ -6,6 +6,7 @@ import { demolitionError, razeCell } from "./demolition";
 import { type Game, type GameEvent, SIMULATION_STEP } from "./model";
 import { DAY_SECONDS, type IncidentKind, incidents, startIncident } from "./narrator";
 import { stepGame } from "./simulation";
+import { logItemSpawned, logUnitSpawned } from "./simulation-log";
 import { consumeFood, foodStock, foodStorageCells, freeSlots, storageCapacity } from "./storage";
 import { createUnit, type Faction, type Role, traits } from "./units";
 
@@ -70,7 +71,9 @@ export function spawnUnit(game: Game, role: Role, x: number, y: number, faction?
   if (role === "queen" && game.units.some((unit) => unit.role === "queen" && unit.hp > 0))
     return "Спавн: матка в колонии одна, вторую поставить нельзя";
   const side = faction ?? (RAID_ONLY.includes(role) ? "raiders" : "colony");
-  game.units.push(createUnit(game.nextUnitId++, role, side, { x, y }));
+  const unit = createUnit(game.nextUnitId++, role, side, { x, y });
+  game.units.push(unit);
+  logUnitSpawned(game, unit);
   return null;
 }
 
@@ -80,18 +83,21 @@ export function setFood(game: Game, amount: number): string | null {
   // Free slots hold one portion each, so the reachable maximum is the stock plus them.
   const limit = stock + storageCapacity(game);
   if (amount > limit) return `Еда: на складе помещается не больше ${limit}`;
-  if (amount < stock) consumeFood(game, stock - amount);
+  if (amount < stock) consumeFood(game, stock - amount, "dev_food");
   const slots = foodStorageCells(game).flatMap((cell) =>
     Array.from({ length: freeSlots(game, cellKey(cell)) }, () => cell),
   );
-  for (const cell of slots.slice(0, amount - foodStock(game)))
-    game.items.push({
+  for (const cell of slots.slice(0, amount - foodStock(game))) {
+    const item = {
       id: game.nextItemId++,
       kind: "food",
       food: "apple",
       portions: 1,
       location: { kind: "cell", cell },
-    });
+    } as const;
+    game.items.push(item);
+    logItemSpawned(game, item);
+  }
   return null;
 }
 
