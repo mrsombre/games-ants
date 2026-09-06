@@ -52,22 +52,27 @@ a:focus-visible {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 12px;
 }
 .ant-count {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 .ant-count svg {
-  width: 34px;
-  height: 34px;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
 }
 .ant-count strong {
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+.ant-total {
+  padding-right: 12px;
+  border-right: 1px solid #deded2;
+  white-space: nowrap;
 }
 .stats {
   min-width: 0;
@@ -339,24 +344,35 @@ a:focus-visible {
   }
   .topbar {
     padding: 0 16px;
-    grid-template-columns: 70% 30%;
+    grid-template-columns: auto auto;
+    column-gap: 12px;
   }
   .ant-counts {
-    gap: 12px;
+    gap: 8px;
   }
   .ant-count {
     gap: 4px;
   }
   .ant-count svg {
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
+  }
+  .ant-total {
+    padding-right: 8px;
   }
   .latest-event {
     display: none;
   }
   .stats {
-    gap: 14px;
+    gap: 10px;
     justify-content: flex-end;
+  }
+  .stats > div {
+    gap: 4px;
+  }
+  .stats strong {
+    font-size: 16px;
+    white-space: nowrap;
   }
   .resource-icon {
     width: 28px;

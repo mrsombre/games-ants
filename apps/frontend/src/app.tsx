@@ -1,7 +1,7 @@
 import { queenOf } from "./game/model";
 import { roles } from "./game/rendering/appearance";
 import { nestCapacity, nestFree, type SpawnBlock, spawnBlock } from "./game/spawning";
-import { foodStock } from "./game/storage";
+import { foodStock, STORAGE_SLOTS } from "./game/storage";
 import type { SpawnRole } from "./game/units";
 import { CommandPanel } from "./ui/command-panel";
 import { AntHead, FoodIcon, NestIcon } from "./ui/icons";
@@ -10,6 +10,7 @@ import { useGame } from "./ui/use-game";
 export function App() {
   const { host, game, tool, setTool, message, tip, error, ready, landscapeName, spawnAnt } = useGame();
   const food = foodStock(game);
+  const foodCapacity = Object.values(game.colony).filter((tile) => tile === "storage").length * STORAGE_SLOTS;
   const capacity = nestCapacity(game);
   const free = Math.max(0, nestFree(game));
   const blocks = Object.fromEntries(
@@ -21,7 +22,16 @@ export function App() {
   return (
     <main className="game">
       <header className="topbar">
-        <section className="ant-counts" aria-label="Муравьи по типам">
+        <section className="ant-counts" aria-label="Количество муравьёв">
+          <div
+            className="ant-count ant-total"
+            role="img"
+            title="Муравьёв всего"
+            aria-label={`Муравьёв всего: ${ants.length}`}
+          >
+            <AntHead />
+            <strong>{ants.length}</strong>
+          </div>
           {(Object.keys(roles) as SpawnRole[]).map((role) => {
             const count = ants.filter((ant) => ant.role === role).length;
             return (
@@ -39,9 +49,15 @@ export function App() {
           })}
         </section>
         <section className="stats" aria-label="Ресурсы">
-          <div role="img" aria-label={`Еда: ${food}`} title="Еда">
+          <div
+            role="img"
+            aria-label={`Еда: вместимость ${foodCapacity}, сейчас ${food}`}
+            title="Еда: вместимость хранилища / сейчас"
+          >
             <FoodIcon className="resource-icon" />
-            <strong data-testid="food">{food}</strong>
+            <strong data-testid="food">
+              {foodCapacity} / {food}
+            </strong>
           </div>
           <div role="img" aria-label={`Гнездо: всего ${capacity}, свободно ${free}`} title="Гнездо: всего / свободно">
             <NestIcon className="resource-icon" />

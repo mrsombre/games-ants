@@ -22,18 +22,18 @@ export function NestIcon({ className }: { className?: string }) {
   );
 }
 
-export function AntHead({ antRole, className }: { antRole: SpawnRole; className?: string }) {
+export function AntHead({ antRole, className }: { antRole?: SpawnRole; className?: string }) {
   return (
     <svg
       className={className}
       viewBox="0 0 40 40"
       aria-hidden="true"
-      style={{ color: `#${roles[antRole].color.toString(16)}` }}
+      style={{ color: antRole ? `#${roles[antRole].color.toString(16)}` : "#3c3026" }}
     >
       <path d="M14 17 10 9 5 6M26 17l4-8 5-3" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
       <path d="M20 13c-8 0-12 5-12 11 0 8 7 13 12 13s12-5 12-13c0-6-4-11-12-11Z" fill="currentColor" />
-      <ellipse cx="13" cy="24" rx="2" ry="3" fill="#30392c" />
-      <ellipse cx="27" cy="24" rx="2" ry="3" fill="#30392c" />
+      <ellipse cx="13" cy="24" rx="2" ry="3" fill={antRole ? "#30392c" : "#f1d98c"} />
+      <ellipse cx="27" cy="24" rx="2" ry="3" fill={antRole ? "#30392c" : "#f1d98c"} />
     </svg>
   );
 }
