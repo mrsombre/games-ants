@@ -12,6 +12,7 @@ export type GameEvent =
   | { kind: "attack-ended" }
   | { kind: "queen-died" };
 export type Game = {
+  elapsedSeconds: number;
   colony: Colony;
   blueprints: Record<string, Blueprint>;
   units: Unit[];

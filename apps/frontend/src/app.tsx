@@ -1,3 +1,4 @@
+import { DAY_PHASES, dayPhase } from "./game/day-cycle";
 import { queenOf } from "./game/model";
 import { roles } from "./game/rendering/appearance";
 import { nestCapacity, nestFree, type SpawnBlock, spawnBlock } from "./game/spawning";
@@ -19,6 +20,8 @@ export function App() {
   const ants = game.units.filter((unit) => unit.faction === "colony" && unit.role !== "queen");
   const enemies = game.units.filter((unit) => unit.faction === "raiders");
   const scoutsAway = ants.filter((ant) => ant.job?.kind === "forage" && ant.job.phase === "away");
+  const phase = dayPhase(game.elapsedSeconds);
+  const day = Math.floor(phase / DAY_PHASES.length) + 1;
   return (
     <main className="game">
       <header className="topbar">
@@ -81,10 +84,15 @@ export function App() {
                   ? `Атака · врагов: ${enemies.length}`
                   : landscapeName}
             </span>
-            <span className="scouts-away" role="img" aria-label={`В разведке: ${scoutsAway.length}`}>
-              {scoutsAway.map((scout) => (
-                <AntHead antRole="scout" key={scout.id} />
-              ))}
+            <span className="scene-status">
+              <span className="scouts-away" role="img" aria-label={`В разведке: ${scoutsAway.length}`}>
+                {scoutsAway.map((scout) => (
+                  <AntHead antRole="scout" key={scout.id} />
+                ))}
+              </span>
+              <span className="day-time">
+                День {day}, {DAY_PHASES[phase % DAY_PHASES.length]}
+              </span>
             </span>
           </div>
           <div className="canvas-wrap">

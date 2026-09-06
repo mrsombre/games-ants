@@ -143,6 +143,15 @@ a:focus-visible {
   font-size: 11px;
   color: #64705a;
 }
+.scene-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.day-time {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
 .scouts-away {
   min-width: 18px;
   min-height: 18px;

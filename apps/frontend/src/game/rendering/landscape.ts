@@ -1,4 +1,5 @@
 import { Assets, Container, Graphics, Sprite } from "pixi.js";
+import { dayPhase } from "../day-cycle";
 import autumn from "./forests/autumn.svg?url";
 import enchanted from "./forests/enchanted.svg?url";
 import summer from "./forests/summer.svg?url";
@@ -10,25 +11,62 @@ const random = (n: number) => {
 };
 
 const forests = [
-  { source: summer, name: "Лесная поляна" },
-  { source: autumn, name: "Золотистый бор" },
-  { source: enchanted, name: "Сумрачная долина" },
+  { source: summer, name: "Лесная поляна", sky: 0xe9eedc },
+  { source: autumn, name: "Золотистый бор", sky: 0xf5e8ce },
+  { source: enchanted, name: "Сумрачная долина", sky: 0xdce9e7 },
 ] as const;
 
 export async function createLandscape() {
   const layer = new Container();
+  const sky = new Graphics();
+  const celestial = new Graphics();
+  const lighting = new Graphics();
   const landscape = new Graphics();
   const design = forests[Math.floor(Math.random() * forests.length)] ?? forests[0];
   const forest = new Sprite(await Assets.load(design.source));
-  const scale = Math.max(WIDTH / forest.texture.width, HORIZON / forest.texture.height);
-  forest.scale.set(scale);
-  forest.position.set((WIDTH - forest.width) / 2, HORIZON - forest.height);
+  forest.width = WIDTH;
+  forest.height = HORIZON;
   const forestMask = new Graphics().rect(0, 0, WIDTH, HORIZON).fill(0xffffff);
   forest.mask = forestMask;
   drawGround(landscape);
   drawEntrance(landscape);
-  layer.addChild(forest, forestMask, landscape);
-  return { layer, name: design.name };
+  layer.addChild(sky, celestial, forest, forestMask, lighting, landscape);
+  let lastPhase = -1;
+  function update(elapsedSeconds: number) {
+    const phase = dayPhase(elapsedSeconds) % 4;
+    if (phase === lastPhase) return;
+    lastPhase = phase;
+    const states = [
+      { sky: 0xfff3cf, tint: 0xffffff, wash: 0xfff4cf, alpha: 0.16, x: 0.14, y: 0.34, light: 0xffdf88 },
+      { sky: design.sky, tint: 0xffffff, wash: 0xffffff, alpha: 0, x: 0.5, y: 0.18, light: 0xfff1c2 },
+      { sky: 0xefb3bd, tint: 0xedb2bd, wash: 0xe78ca9, alpha: 0.18, x: 0.86, y: 0.34, light: 0xffbd8d },
+      { sky: 0x182c50, tint: 0x627da9, wash: 0x142b58, alpha: 0.3, x: 0.5, y: 0.25, light: 0xe4eeff },
+    ];
+    const state = states[phase];
+    if (!state) return;
+    sky.clear().rect(0, 0, WIDTH, HORIZON).fill(state.sky);
+    forest.tint = state.tint;
+    lighting.clear().rect(0, 0, WIDTH, HORIZON).fill({ color: state.wash, alpha: state.alpha });
+    const x = WIDTH * state.x;
+    const y = HORIZON * state.y;
+    const radius = phase === 3 ? 24 : 32;
+    celestial.clear();
+    for (const [size, alpha] of [
+      [1.9, 0.04],
+      [1.5, 0.07],
+      [1.2, 0.12],
+    ] as const) {
+      celestial.circle(x, y, radius * size).fill({ color: state.light, alpha });
+    }
+    celestial.circle(x, y, radius).fill(state.light);
+    if (phase === 3) {
+      celestial.circle(x - 8, y - 5, 5).fill({ color: 0xa4bbdb, alpha: 0.4 });
+      celestial.circle(x + 7, y + 8, 7).fill({ color: 0xa4bbdb, alpha: 0.3 });
+      celestial.circle(x + 9, y - 10, 3).fill({ color: 0xa4bbdb, alpha: 0.35 });
+    }
+  }
+  update(0);
+  return { layer, name: design.name, update };
 }
 function drawGround(landscape: Graphics) {
   landscape.rect(0, HORIZON, WIDTH, HEIGHT - HORIZON).fill(0x302a26);

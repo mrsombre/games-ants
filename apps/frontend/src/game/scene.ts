@@ -71,6 +71,7 @@ export async function createScene(host: HTMLElement, onCellClick: (x: number, y:
     landscapeName: landscape.name,
     update(game: Game, nextTool: Tool, time: number) {
       currentGame = game;
+      landscape.update(game.elapsedSeconds);
       if (revision !== game.revision || tool !== nextTool) {
         revision = game.revision;
         tool = nextTool;

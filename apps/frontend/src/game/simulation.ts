@@ -27,6 +27,7 @@ export function createGame(random: () => number = Math.random): Game {
     }),
   ];
   return {
+    elapsedSeconds: 0,
     colony: { ...initialColony },
     blueprints: {},
     units,
@@ -85,6 +86,7 @@ export function stepGame(game: Game, seconds = SIMULATION_STEP, random: () => nu
   if (!Number.isFinite(seconds) || seconds <= 0 || seconds > SIMULATION_STEP)
     throw new RangeError("Use a positive simulation step of at most 0.05 seconds");
   const events: GameEvent[] = [];
+  game.elapsedSeconds += seconds;
   const queenWasAlive = (queenOf(game)?.hp ?? 0) > 0;
   advanceAttack(game, seconds, random, events);
   const wasAttack = game.units.some((unit) => unit.faction === "raiders");
