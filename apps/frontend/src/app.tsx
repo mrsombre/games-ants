@@ -1,15 +1,18 @@
+import { hasNestRoom, nestCapacity, nestFree } from "./game/housing";
 import { queenOf } from "./game/model";
 import { roles } from "./game/rendering/appearance";
 import { spawnableEggs } from "./game/spawning";
 import { foodStock } from "./game/storage";
 import type { HatchRole } from "./game/units";
 import { CommandPanel } from "./ui/command-panel";
-import { AntHead, FoodIcon } from "./ui/icons";
+import { AntHead, FoodIcon, NestIcon } from "./ui/icons";
 import { useGame } from "./ui/use-game";
 
 export function App() {
   const { host, game, tool, setTool, message, tip, error, ready, landscapeName, spawnAnt } = useGame();
   const food = foodStock(game);
+  const capacity = nestCapacity(game);
+  const free = Math.max(0, nestFree(game));
   const ants = game.units.filter((unit) => unit.faction === "colony" && unit.role !== "queen");
   const enemies = game.units.filter((unit) => unit.faction === "raiders");
   const scoutsAway = ants.filter((ant) => ant.job?.kind === "forage" && ant.job.phase === "away");
@@ -37,6 +40,12 @@ export function App() {
           <div role="img" aria-label={`Еда: ${food}`} title="Еда">
             <FoodIcon className="resource-icon" />
             <strong data-testid="food">{food}</strong>
+          </div>
+          <div role="img" aria-label={`Гнездо: всего ${capacity}, свободно ${free}`} title="Гнездо: всего / свободно">
+            <NestIcon className="resource-icon" />
+            <strong data-testid="nest">
+              {capacity} / {free}
+            </strong>
           </div>
         </section>
         <span className="latest-event" role="status" title={message}>
@@ -78,6 +87,7 @@ export function App() {
         setTool={setTool}
         food={food}
         hasEggSource={spawnableEggs(game).length > 0}
+        hasNestRoom={hasNestRoom(game)}
         spawnAnt={spawnAnt}
       />
     </main>

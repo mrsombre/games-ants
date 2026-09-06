@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Tool } from "../game/colony";
 import { planBuild } from "../game/construction";
 import { demolish } from "../game/demolition";
+import { hasNestRoom } from "../game/housing";
 import { type FoodKind, foodValue } from "../game/items";
 import { SIMULATION_STEP } from "../game/model";
 import { roles } from "../game/rendering/appearance";
@@ -94,9 +95,11 @@ export function useGame() {
     setMessage(
       started
         ? `${roles[role].label}: яйцо выбрано, вылупление через 10 секунд`
-        : foodStock(game) < hatchCost[role]
-          ? "Не хватает еды — дождись разведчика"
-          : "Нет свободной кладки — дождись яйца или завершения переноса",
+        : !hasNestRoom(game)
+          ? "В гнезде нет свободного места — построй или расширь гнездо"
+          : foodStock(game) < hatchCost[role]
+            ? "Не хватает еды — дождись разведчика"
+            : "Нет свободной кладки — дождись яйца или завершения переноса",
     );
     refresh((n) => n + 1);
   }

@@ -10,6 +10,7 @@ type Props = {
   setTool: (tool: Tool) => void;
   food: number;
   hasEggSource: boolean;
+  hasNestRoom: boolean;
   spawnAnt: (role: HatchRole) => void;
 };
 const tools: Record<Tool, { label: string; title: string; description: string }> = {
@@ -63,7 +64,7 @@ function ToolIcon({ tool }: { tool: BuildTool }) {
     </svg>
   );
 }
-export function CommandPanel({ tool, setTool, food, hasEggSource, spawnAnt }: Props) {
+export function CommandPanel({ tool, setTool, food, hasEggSource, hasNestRoom, spawnAnt }: Props) {
   return (
     <section className="command-panel" aria-label="Строительство">
       <div className="command-inner">
@@ -125,13 +126,18 @@ export function CommandPanel({ tool, setTool, food, hasEggSource, spawnAnt }: Pr
           </svg>
           <span>{tools.demolish.label}</span>
         </button>
-        <Spawning food={food} hasEggSource={hasEggSource} spawnAnt={spawnAnt} />
+        <Spawning food={food} hasEggSource={hasEggSource} hasNestRoom={hasNestRoom} spawnAnt={spawnAnt} />
       </div>
     </section>
   );
 }
 
-function Spawning({ food, hasEggSource, spawnAnt }: Pick<Props, "food" | "hasEggSource" | "spawnAnt">) {
+function Spawning({
+  food,
+  hasEggSource,
+  hasNestRoom,
+  spawnAnt,
+}: Pick<Props, "food" | "hasEggSource" | "hasNestRoom" | "spawnAnt">) {
   return (
     <div className="command-group recruitment">
       <span className="group-label" aria-hidden="true">
@@ -143,10 +149,10 @@ function Spawning({ food, hasEggSource, spawnAnt }: Pick<Props, "food" | "hasEgg
             type="button"
             className="command-button"
             key={role}
-            disabled={food < hatchCost[role] || !hasEggSource}
+            disabled={food < hatchCost[role] || !hasEggSource || !hasNestRoom}
             onClick={() => spawnAnt(role)}
-            aria-label={`${roles[role].label} — ${hatchCost[role]} еды и яйцо`}
-            title={`${roles[role].label} — ${hatchCost[role]} еды и яйцо`}
+            aria-label={`${roles[role].label} — ${hatchCost[role]} еды, яйцо и место в гнезде`}
+            title={`${roles[role].label} — ${hatchCost[role]} еды, яйцо и место в гнезде`}
           >
             <AntHead antRole={role} />
             <span>{roles[role].label}</span>

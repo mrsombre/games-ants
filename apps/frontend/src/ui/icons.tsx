@@ -12,6 +12,16 @@ export function FoodIcon({ className }: { className?: string }) {
   );
 }
 
+export function NestIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 40 40" aria-hidden="true">
+      <path d="M20 5 4 19h5v15h22V19h5Z" fill="#c9a26b" />
+      <path d="M20 5 4 19h5v15h22V19h5Z" fill="none" stroke="#79513a" strokeWidth="3" strokeLinejoin="round" />
+      <path d="M16 34V25a4 4 0 0 1 8 0v9" fill="#79513a" />
+    </svg>
+  );
+}
+
 export function AntHead({ antRole, className }: { antRole: HatchRole; className?: string }) {
   return (
     <svg

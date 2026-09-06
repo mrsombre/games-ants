@@ -1,4 +1,5 @@
 import { type Cell, cellKey } from "./cells";
+import { hasNestRoom } from "./housing";
 import { type Item, itemReserved } from "./items";
 import { EPSILON, type Game } from "./model";
 import { consumeFood } from "./storage";
@@ -18,6 +19,7 @@ export function spawnableEggs(game: Game) {
   );
 }
 export function startSpawn(game: Game, role: HatchRole, random: () => number = Math.random) {
+  if (!hasNestRoom(game)) return false;
   const eggs = spawnableEggs(game);
   const egg = eggs[Math.floor(random() * eggs.length)];
   if (!egg || !consumeFood(game, hatchCost[role])) return false;
