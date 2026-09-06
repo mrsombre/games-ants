@@ -3,7 +3,7 @@ import { type Cell, isCell } from "./cells";
 import type { Colony } from "./colony";
 import { plannedColony } from "./construction";
 import type { Game } from "./model";
-import { drawColony } from "./rendering/colony";
+import { drawColony, drawWater } from "./rendering/colony";
 import { createCreatures } from "./rendering/creatures";
 import { createLandscape } from "./rendering/landscape";
 import { CELL, HEIGHT, SURFACE, screenCell, WIDTH } from "./rendering/layout";
@@ -20,10 +20,11 @@ export async function createScene(host: HTMLElement, onCellClick: (x: number, y:
     resolution: Math.min(devicePixelRatio, 2),
   });
   const tiles = new Graphics(),
+    water = new Graphics(),
     hover = new Graphics();
   const creatures = createCreatures();
   const landscape = await createLandscape();
-  app.stage.addChild(landscape.layer, tiles, hover, creatures.layer);
+  app.stage.addChild(landscape.layer, tiles, water, hover, creatures.layer);
   host.appendChild(app.canvas);
   let planned: Colony = {},
     tool: Tool = "corridor",
@@ -77,6 +78,7 @@ export async function createScene(host: HTMLElement, onCellClick: (x: number, y:
         planned = plannedColony(game);
         drawColony(tiles, game.colony, planned, tool);
       }
+      drawWater(water, game.flood, time);
       updateHover();
       creatures.update(game, time);
     },

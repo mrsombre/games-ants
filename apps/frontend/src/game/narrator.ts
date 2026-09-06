@@ -1,3 +1,5 @@
+import { colonyDepth } from "./colony";
+import { recedeFlood, startFlood } from "./flood";
 import { type FoodKind, forageWeight } from "./items";
 import { type Game, type GameEvent, queenOf } from "./model";
 import { spawnWave } from "./raids";
@@ -5,7 +7,7 @@ import { spawnableEggs } from "./spawning";
 import { foodStock } from "./storage";
 import { type RaidRole, type SpawnRole, spawnCost } from "./units";
 
-export type IncidentKind = "raid" | "thieves" | "boss" | "rich-forage" | "food-nearby";
+export type IncidentKind = "raid" | "thieves" | "boss" | "flood" | "rich-forage" | "food-nearby";
 export type IncidentClass = "threat" | "boon";
 export type TensionPhase = "buildup" | "peak" | "recovery";
 export type Narrator = {
@@ -20,6 +22,7 @@ export type Narrator = {
   lastPeakAt: number;
   lastLoss: number;
   boon: { kind: IncidentKind; until: number } | null;
+  effect: { kind: IncidentKind; until: number } | null;
 };
 
 export const DAY_SECONDS = 600;
@@ -42,6 +45,9 @@ export const narratorConfig = {
   bossWeight: 0.4,
   bossArmedWeight: 1.1,
   bossWarriors: 2,
+  floodWeight: 0.5,
+  floodDeepWeight: 0.5,
+  floodDepthRows: 5,
 };
 
 export function nextRandom(narrator: Narrator) {
@@ -64,6 +70,7 @@ export function createNarrator(seed: number, difficulty = narratorConfig.difficu
     lastPeakAt: 0,
     lastLoss: 0,
     boon: null,
+    effect: null,
   };
   if (difficulty <= 0) return narrator;
   narrator.phaseLeft = pace(narrator, narratorConfig.buildupSeconds);
@@ -84,6 +91,7 @@ export type Signals = {
   warriors: number;
   queenHurt: boolean;
   freeEggs: number;
+  depth: number;
   lastLoss: number;
   weak: boolean;
 };
@@ -96,7 +104,15 @@ export function signals(game: Game): Signals {
   const lastLoss = game.narrator.lastLoss;
   const weak =
     consumptions < narratorConfig.weakConsumptions || warriors === 0 || queenHurt || lastLoss > narratorConfig.weakLoss;
-  return { consumptions, warriors, queenHurt, freeEggs: spawnableEggs(game).length, lastLoss, weak };
+  return {
+    consumptions,
+    warriors,
+    queenHurt,
+    freeEggs: spawnableEggs(game).length,
+    depth: colonyDepth(game.colony),
+    lastLoss,
+    weak,
+  };
 }
 
 export const raidRoles = (size: number): SpawnRole[] =>
@@ -107,7 +123,7 @@ export const bossRoles = (size: number): RaidRole[] => [
   "beetle",
   ...Array.from({ length: Math.max(0, size - 1) }, () => "warrior" as const),
 ];
-const waveSize = (game: Game, share: number, cap: number) =>
+export const waveSize = (game: Game, share: number, cap: number) =>
   Math.max(1, Math.min(cap, Math.ceil(strength(game) * share * game.narrator.difficulty)));
 function startBoon(game: Game, kind: IncidentKind) {
   game.narrator.boon = { kind, until: game.elapsedSeconds + narratorConfig.boonSeconds };
@@ -118,7 +134,10 @@ type Incident = {
   class: IncidentClass;
   weight: (signals: Signals) => number;
   size: (game: Game) => number;
-  start: (game: Game, size: number) => void;
+  // Returns the size the incident actually reached: a wave brings exactly the asked-for
+  // raiders, a flood may find fewer cells than requested.
+  start: (game: Game, size: number) => number;
+  end?: (game: Game) => void;
 };
 export const incidents: Incident[] = [
   {
@@ -126,14 +145,14 @@ export const incidents: Incident[] = [
     class: "threat",
     weight: () => 1,
     size: (game) => waveSize(game, 0.12, 10),
-    start: (game, size) => spawnWave(game, raidRoles(size), nextRandom(game.narrator)),
+    start: (game, size) => spawnWave(game, raidRoles(size), nextRandom(game.narrator)).length,
   },
   {
     kind: "thieves",
     class: "threat",
     weight: (signals) => 0.5 + 0.25 * signals.freeEggs,
     size: (game) => waveSize(game, 0.08, 6),
-    start: (game, size) => spawnWave(game, thievesRoles(size), nextRandom(game.narrator)),
+    start: (game, size) => spawnWave(game, thievesRoles(size), nextRandom(game.narrator)).length,
   },
   {
     kind: "boss",
@@ -142,21 +161,37 @@ export const incidents: Incident[] = [
       narratorConfig.bossWeight +
       (signals.warriors >= narratorConfig.bossWarriors ? narratorConfig.bossArmedWeight : 0),
     size: (game) => waveSize(game, 0.04, 3),
-    start: (game, size) => spawnWave(game, bossRoles(size), nextRandom(game.narrator)),
+    start: (game, size) => spawnWave(game, bossRoles(size), nextRandom(game.narrator)).length,
+  },
+  {
+    kind: "flood",
+    class: "threat",
+    weight: (signals) =>
+      narratorConfig.floodWeight +
+      (signals.depth >= narratorConfig.floodDepthRows ? narratorConfig.floodDeepWeight : 0),
+    size: (game) => waveSize(game, 0.03, 3),
+    start: (game, size) => startFlood(game, size, nextRandom(game.narrator)),
+    end: (game) => recedeFlood(game),
   },
   {
     kind: "rich-forage",
     class: "boon",
     weight: (signals) => 0.5 + 2 * signals.lastLoss,
     size: () => 1,
-    start: (game) => startBoon(game, "rich-forage"),
+    start: (game, size) => {
+      startBoon(game, "rich-forage");
+      return size;
+    },
   },
   {
     kind: "food-nearby",
     class: "boon",
     weight: (signals) => 0.5 + (signals.consumptions < narratorConfig.weakConsumptions ? 1.5 : 0),
     size: () => 1,
-    start: (game) => startBoon(game, "food-nearby"),
+    start: (game, size) => {
+      startBoon(game, "food-nearby");
+      return size;
+    },
   },
 ];
 
@@ -185,7 +220,7 @@ export const incidentOf = (kind: IncidentKind) => incidents.find((entry) => entr
 function startIncident(game: Game, kind: IncidentKind, size: number, events: GameEvent[]) {
   const narrator = game.narrator;
   const incident = incidentOf(kind);
-  incident.start(game, size);
+  const started = incident.start(game, size);
   if (incident.class === "threat") {
     narrator.active = kind;
     narrator.census = colonyAnts(game).length;
@@ -195,7 +230,7 @@ function startIncident(game: Game, kind: IncidentKind, size: number, events: Gam
       narrator.lastPeakAt = game.elapsedSeconds;
     }
   }
-  events.push({ kind: "incident-started", incident: kind, size });
+  events.push({ kind: "incident-started", incident: kind, size: started });
 }
 const allowedClasses: Record<TensionPhase, readonly IncidentClass[]> = {
   buildup: ["threat", "boon"],
@@ -239,7 +274,12 @@ export function settleIncidents(game: Game, events: GameEvent[]) {
     events.push({ kind: "incident-ended", incident: narrator.boon.kind });
     narrator.boon = null;
   }
-  if (narrator.active && !game.units.some((unit) => unit.faction === "raiders")) {
+  const effect = narrator.effect;
+  if (effect && game.elapsedSeconds >= effect.until) {
+    incidentOf(effect.kind).end?.(game);
+    narrator.effect = null;
+  }
+  if (narrator.active && !narrator.effect && !game.units.some((unit) => unit.faction === "raiders")) {
     const survivors = colonyAnts(game).length;
     narrator.lastLoss = narrator.census > 0 ? Math.max(0, (narrator.census - survivors) / narrator.census) : 0;
     events.push({ kind: "incident-ended", incident: narrator.active });

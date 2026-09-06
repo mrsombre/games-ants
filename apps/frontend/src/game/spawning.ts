@@ -1,4 +1,5 @@
 import { type Cell, cellKey } from "./cells";
+import { isFlooded } from "./flood";
 import { type Item, itemReserved } from "./items";
 import { EPSILON, type Game } from "./model";
 import { consumeFood, foodStock } from "./storage";
@@ -22,6 +23,7 @@ export function spawnableEggs(game: Game) {
       item.kind === "egg" &&
       item.location.kind === "cell" &&
       game.colony[cellKey(item.location.cell)] === "nest" &&
+      !isFlooded(game, cellKey(item.location.cell)) &&
       !itemReserved(game, item.id) &&
       !spawnClaimed(game, item.id),
   );

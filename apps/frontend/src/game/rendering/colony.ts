@@ -1,5 +1,5 @@
 import type { Graphics } from "pixi.js";
-import { COLS, ENTRANCE, key, ROWS } from "../cells";
+import { COLS, ENTRANCE, key, point, ROWS } from "../cells";
 import { type Colony, connected, placementError, type RoomTile, roomSpan } from "../colony";
 import { STORAGE_SLOTS } from "../storage";
 import type { Tool } from "../tools";
@@ -76,5 +76,21 @@ function drawPassages(g: Graphics, colony: Colony, x: number, y: number) {
     if (!rect) continue;
     const [left, top, width, height] = rect;
     g.rect(x * CELL + left, SURFACE + y * CELL + top, width, height).fill(0x796246);
+  }
+}
+
+export function drawWater(g: Graphics, flood: readonly string[], time: number) {
+  g.clear();
+  for (const id of flood) {
+    const { x, y } = point(id);
+    const px = x * CELL,
+      py = SURFACE + y * CELL;
+    g.roundRect(px + 4, py + 4, CELL - 8, CELL - 8, 9).fill({ color: 0x2f6f9e, alpha: 0.62 });
+    for (let line = 0; line < 3; line++) {
+      const wave = Math.sin(time * 1.6 + line + x) * 3;
+      g.moveTo(px + 9, py + 16 + line * 12 + wave)
+        .lineTo(px + CELL - 9, py + 16 + line * 12 - wave)
+        .stroke({ color: 0x9fd3ee, alpha: 0.45, width: 2 });
+    }
   }
 }

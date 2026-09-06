@@ -2,6 +2,7 @@ import { cellKey, ENTRANCE, isCell, key, neighbors } from "./cells";
 import { type Colony, connected, isRoom, roomSpan } from "./colony";
 import { clearCell, plannedColony } from "./construction";
 import { roomCellOccupied } from "./eggs";
+import { isFlooded } from "./flood";
 import type { Game } from "./model";
 import { nestCells } from "./nesting";
 import { interruptJob } from "./work";
@@ -29,6 +30,7 @@ export function demolitionError(game: Game, x: number, y: number): string | null
   const tile = colony[id];
   if (!tile) return "Здесь нечего ломать";
   if (y <= 1) return "Вход в муравейник нельзя сломать";
+  if (isFlooded(game, id)) return "Клетка затоплена";
   if (roomCellOccupied(game, id)) return "Сначала освободи клетку от яиц и еды или дождись доставки";
   if (nestCells(game).some((cell) => cellKey(cell) === id)) return "Комнату матки нельзя сломать";
   if (isRoom(tile)) {

@@ -1,4 +1,4 @@
-import { isCell, key, neighbors } from "./cells";
+import { isCell, key, neighbors, point } from "./cells";
 
 export const MAX_ROOM_WIDTH = 4;
 export type RoomTile = "nest" | "storage";
@@ -18,6 +18,7 @@ export const initialColony: Colony = {
   "10,3": "nest",
   "11,3": "nest",
 };
+export const colonyDepth = (colony: Colony) => new Set(Object.keys(colony).map((id) => point(id).y)).size;
 export function connected(a: Tile | undefined, b: Tile | undefined, horizontal: boolean) {
   return !!a && !!b && (horizontal || (a === "corridor" && b === "corridor"));
 }

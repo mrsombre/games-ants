@@ -1,4 +1,4 @@
-import { type Cell, HOME } from "./cells";
+import { type Cell, type CellId, HOME } from "./cells";
 import type { Colony } from "./colony";
 import type { Blueprint } from "./construction";
 import type { FoodKind, Item } from "./items";
@@ -16,6 +16,7 @@ export type GameEvent =
 export type Game = {
   elapsedSeconds: number;
   colony: Colony;
+  flood: CellId[];
   blueprints: Record<string, Blueprint>;
   units: Unit[];
   items: Item[];

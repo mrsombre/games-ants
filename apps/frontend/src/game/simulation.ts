@@ -3,6 +3,7 @@ import { initialColony } from "./colony";
 import { contacts, fight, retreat, stanceOf } from "./combat";
 import { advanceConstruction } from "./construction";
 import { advanceEggs } from "./eggs";
+import { floodedCells } from "./flood";
 import { dropCargo } from "./items";
 import { type Game, type GameEvent, queenOf, SIMULATION_STEP } from "./model";
 import { advanceNarrator, createNarrator, settleIncidents } from "./narrator";
@@ -29,6 +30,7 @@ export function createGame(random: () => number = Math.random, seed = Math.floor
   return {
     elapsedSeconds: 0,
     colony: { ...initialColony },
+    flood: [],
     blueprints: {},
     units,
     items: [
@@ -88,7 +90,7 @@ export function stepGame(game: Game, seconds = SIMULATION_STEP, random: () => nu
   const queenWasAlive = (queenOf(game)?.hp ?? 0) > 0;
   advanceNarrator(game, seconds, events);
   advanceEggs(game, seconds);
-  const navigation = new Navigation(game.colony);
+  const navigation = new Navigation(game.colony, floodedCells(game));
   prepareJobs(game, seconds, navigation);
   const engaged = contacts(game.units).blocked;
   advanceNesting(game, seconds, navigation, engaged);

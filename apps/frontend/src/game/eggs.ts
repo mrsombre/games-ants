@@ -1,4 +1,5 @@
 import { cellKey, neighbors, point, sameCell } from "./cells";
+import { isFlooded } from "./flood";
 import { EPSILON, type Game, queenOf } from "./model";
 import type { Navigation } from "./navigation";
 
@@ -12,7 +13,9 @@ export function roomCellOccupied(game: Game, id: string) {
 export function queenCells(game: Game) {
   const queen = queenOf(game);
   return queen
-    ? neighbors(queen.cell).filter((cell) => cell.y === queen.cell.y && game.colony[cellKey(cell)] === "nest")
+    ? neighbors(queen.cell).filter(
+        (cell) => cell.y === queen.cell.y && game.colony[cellKey(cell)] === "nest" && !isFlooded(game, cellKey(cell)),
+      )
     : [];
 }
 function freeQueenCells(game: Game) {
@@ -45,6 +48,7 @@ export function eggStorageCells(game: Game, navigation: Navigation) {
     const cell = point(id);
     if (
       tile !== "nest" ||
+      isFlooded(game, id) ||
       sameCell(cell, queen.cell) ||
       queenSeats.some((other) => sameCell(cell, other)) ||
       roomCellOccupied(game, id)

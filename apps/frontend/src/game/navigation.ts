@@ -6,10 +6,16 @@ import type { Unit } from "./units";
 type Tree = Map<string, Cell | null>;
 export class Navigation {
   private readonly trees = new Map<string, Tree>();
-  constructor(private readonly colony: Colony) {}
+  constructor(
+    private readonly colony: Colony,
+    private readonly flooded: ReadonlySet<string> = new Set(),
+  ) {}
 
   private walkable(cell: Cell) {
-    return cell.y === 0 ? Number.isInteger(cell.x) && cell.x >= -1 && cell.x <= COLS : !!this.colony[cellKey(cell)];
+    const id = cellKey(cell);
+    return cell.y === 0
+      ? Number.isInteger(cell.x) && cell.x >= -1 && cell.x <= COLS
+      : !!this.colony[id] && !this.flooded.has(id);
   }
   private adjacent(from: Cell, to: Cell) {
     if (!this.walkable(to)) return false;

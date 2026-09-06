@@ -1,4 +1,6 @@
 import { expect, it } from "vitest";
+import { colonyDepth } from "./colony";
+import { FLOOD_SECONDS } from "./flood";
 import { forageWeight } from "./items";
 import type { GameEvent } from "./model";
 import {
@@ -64,7 +66,7 @@ it("starts in buildup with a scheduled first incident and scales pacing by diffi
   expect(easy.nextIncidentAt).toBeGreaterThanOrEqual(narratorConfig.minorMinSeconds);
   expect(easy.nextIncidentAt).toBeLessThanOrEqual(narratorConfig.minorMaxSeconds);
   expect(hard.nextIncidentAt).toBeCloseTo(easy.nextIncidentAt / 2, 8);
-  expect([easy.pending, easy.boon, easy.active]).toEqual([null, null, null]);
+  expect([easy.pending, easy.boon, easy.active, easy.effect]).toEqual([null, null, null, null]);
   expect([easy.lastPeakAt, easy.lastLoss, easy.census]).toEqual([0, 0, 0]);
 });
 it("stays silent at difficulty zero and leaves its state untouched", () => {
@@ -122,6 +124,7 @@ it("keeps the catalog v1 kinds, classes and sizes", () => {
     ["raid", "threat"],
     ["thieves", "threat"],
     ["boss", "threat"],
+    ["flood", "threat"],
     ["rich-forage", "boon"],
     ["food-nearby", "boon"],
   ]);
@@ -130,14 +133,14 @@ it("keeps the catalog v1 kinds, classes and sizes", () => {
     expect(incident.size(game)).toBe(1);
   }
   for (const kind of ["rich-forage", "food-nearby"] as const) {
-    incidentOf(kind).start(game, 1);
+    expect(incidentOf(kind).start(game, 1)).toBe(1);
     expect(game.narrator.boon).toEqual({ kind, until: game.elapsedSeconds + narratorConfig.boonSeconds });
     expect(game.units.filter((unit) => unit.faction === "raiders")).toEqual([]);
     game.narrator.boon = null;
   }
-  incidentOf("raid").start(game, 2);
-  incidentOf("thieves").start(game, 2);
-  incidentOf("boss").start(game, 2);
+  expect(incidentOf("raid").start(game, 2)).toBe(2);
+  expect(incidentOf("thieves").start(game, 2)).toBe(2);
+  expect(incidentOf("boss").start(game, 2)).toBe(2);
   expect(game.units.filter((unit) => unit.faction === "raiders").map((unit) => unit.role)).toEqual([
     "worker",
     "warrior",
@@ -148,7 +151,7 @@ it("keeps the catalog v1 kinds, classes and sizes", () => {
   ]);
 });
 it("raises the food-nearby weight only while food is short", () => {
-  const hungry = { consumptions: 1.99, warriors: 1, queenHurt: false, freeEggs: 0, lastLoss: 0, weak: false };
+  const hungry = { consumptions: 1.99, warriors: 1, queenHurt: false, freeEggs: 0, depth: 0, lastLoss: 0, weak: false };
   const fed = { ...hungry, consumptions: narratorConfig.weakConsumptions };
   const nearby = incidentOf("food-nearby");
   expect(nearby.weight(hungry)).toBeCloseTo(2, 8);
@@ -181,7 +184,7 @@ it("counts free eggs as a thieves signal", () => {
   expect(incidents.find((incident) => incident.kind === "thieves")?.weight(signals(game))).toBeCloseTo(0.75, 8);
 });
 it("softens large threats and doubles boons for a weak colony without zeroing any weight", () => {
-  const weak = { consumptions: 0, warriors: 0, queenHurt: true, freeEggs: 0, lastLoss: 0.5, weak: true };
+  const weak = { consumptions: 0, warriors: 0, queenHurt: true, freeEggs: 0, depth: 0, lastLoss: 0.5, weak: true };
   const strong = { ...weak, weak: false };
   for (const incident of incidents) {
     const base = incident.weight(strong);
@@ -385,7 +388,7 @@ it("grows the boss escort with colony strength and caps it at three raiders", ()
   expect(boss.size(game)).toBe(3);
 });
 it("raises the boss weight once the colony fields two warriors and still spares a weak colony", () => {
-  const alone = { consumptions: 3, warriors: 1, queenHurt: false, freeEggs: 0, lastLoss: 0, weak: false };
+  const alone = { consumptions: 3, warriors: 1, queenHurt: false, freeEggs: 0, depth: 0, lastLoss: 0, weak: false };
   const armed = { ...alone, warriors: narratorConfig.bossWarriors };
   const boss = incidentOf("boss");
   expect(boss.weight(alone)).toBeCloseTo(narratorConfig.bossWeight, 8);
@@ -395,6 +398,41 @@ it("raises the boss weight once the colony fields two warriors and still spares 
     boss.weight(armed) * narratorConfig.mercyThreat,
     8,
   );
+});
+it("weighs the flood by the number of built rows and sizes it by colony strength", () => {
+  const shallow = { consumptions: 3, warriors: 1, queenHurt: false, freeEggs: 0, depth: 4, lastLoss: 0, weak: false };
+  const deep = { ...shallow, depth: narratorConfig.floodDepthRows };
+  const flood = incidentOf("flood");
+  expect(flood.weight(shallow)).toBeCloseTo(narratorConfig.floodWeight, 8);
+  expect(flood.weight(deep)).toBeCloseTo(narratorConfig.floodWeight + narratorConfig.floodDeepWeight, 8);
+  const game = narrated();
+  expect(colonyDepth(game.colony)).toBe(5);
+  expect(signals(game).depth).toBe(5);
+  expect(flood.size(game)).toBe(1);
+  for (let i = 0; i < 60; i++) addUnit(game, "warrior");
+  expect(flood.size(game)).toBe(3);
+  game.colony = { "8,1": "corridor", "8,2": "corridor" };
+  expect(colonyDepth(game.colony)).toBe(2);
+});
+it("reports the flooded cells as the incident size and holds the threat until the water recedes", () => {
+  const game = narrated();
+  game.colony["8,6"] = "corridor";
+  game.narrator.pending = { incident: "flood", size: 3, at: 0 };
+  game.elapsedSeconds = 1;
+  const events: GameEvent[] = [];
+  advanceNarrator(game, 0.05, events);
+  expect(events).toEqual([{ kind: "incident-started", incident: "flood", size: 1 }]);
+  expect(game.flood).toEqual(["8,6"]);
+  expect(game.narrator.active).toBe("flood");
+  settleIncidents(game, events);
+  expect(game.narrator.active).toBe("flood");
+  expect(run(game, 60)).toEqual([]);
+  game.elapsedSeconds = 1 + FLOOD_SECONDS;
+  settleIncidents(game, events);
+  expect(events.at(-1)).toEqual({ kind: "incident-ended", incident: "flood" });
+  expect(game.narrator.active).toBeNull();
+  expect(game.narrator.effect).toBeNull();
+  expect(game.flood).toEqual([]);
 });
 it("hands work the default forage table and speeds it up or enriches it under a boon", () => {
   const game = narrated();

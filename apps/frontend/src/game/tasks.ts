@@ -2,6 +2,7 @@ import { type Cell, COLS, cellKey, ENTRANCE, EXIT, neighbors, point, sameCell } 
 import { connected } from "./colony";
 import { MAX_BUILDERS } from "./construction";
 import { eggStorageCells, queenCells } from "./eggs";
+import { isFlooded } from "./flood";
 import { canCarry, itemReserved } from "./items";
 import type { Job } from "./jobs";
 import { type Game, homeOf } from "./model";
@@ -26,7 +27,7 @@ function availableOffers(game: Game, faction: Faction, navigation: Navigation, r
   if (faction === "colony") {
     if (enemies.length) {
       for (const cell of [ENTRANCE, ...(navigation.route(ENTRANCE, homeOf(game)) ?? [])]) {
-        if (game.colony[cellKey(cell)] === "corridor")
+        if (game.colony[cellKey(cell)] === "corridor" && !isFlooded(game, cellKey(cell)))
           offers.push(offer({ kind: "guard", destination: cell }, cell, 190));
       }
     }
@@ -161,7 +162,7 @@ export function jobValid(game: Game, unit: Unit) {
   if (!job) return true;
   switch (job.kind) {
     case "build":
-      return !!game.blueprints[job.target] && !!game.colony[cellKey(job.stand)];
+      return !!game.blueprints[job.target] && !!game.colony[cellKey(job.stand)] && !isFlooded(game, cellKey(job.stand));
     case "haul": {
       const item = game.items.find((item) => item.id === job.itemId);
       if (!item) return false;
@@ -180,8 +181,11 @@ export function jobValid(game: Game, unit: Unit) {
     case "flee":
       return true;
     case "wander":
-      return job.destination.y === 0 || !!game.colony[cellKey(job.destination)];
+      return (
+        job.destination.y === 0 ||
+        (!!game.colony[cellKey(job.destination)] && !isFlooded(game, cellKey(job.destination)))
+      );
     case "nest":
-      return game.colony[cellKey(job.destination)] === "nest";
+      return game.colony[cellKey(job.destination)] === "nest" && !isFlooded(game, cellKey(job.destination));
   }
 }
