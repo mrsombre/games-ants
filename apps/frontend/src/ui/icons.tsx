@@ -1,5 +1,5 @@
-import { roles } from "../game/rendering/appearance";
-import type { SpawnRole } from "../game/units";
+import { roles } from "@app/assets/appearance";
+import type { SpawnRole } from "@app/game/units";
 
 export function FoodIcon({ className }: { className?: string }) {
   return (

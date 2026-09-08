@@ -1,7 +1,7 @@
 import { type Cell, cellKey, point, sameCell } from "./cells";
-import { dropCargo, type FoodKind, foodValue, forage, type Item, pickUp } from "./items";
+import { forageSeconds } from "./foraging";
+import { dropCargo, type FoodKind, foodValue, forage, forageWeight, type Item, pickUp } from "./items";
 import { EPSILON, type Game, type GameEvent } from "./model";
-import { forageSeconds, forageWeights } from "./narrator";
 import { type Navigation, setRoute } from "./navigation";
 import {
   logForageLeft,
@@ -148,12 +148,12 @@ export function performJob(
         job.phase = "away";
         logTaskPhase(game, unit, job, "away");
         logForageLeft(game, unit, job.exit);
-        job.remaining = forageSeconds(game, random());
+        job.remaining = forageSeconds(random());
         return;
       }
       job.remaining = Math.max(0, job.remaining - seconds);
       if (job.remaining > EPSILON) return;
-      const cargo = forage(random(), forageWeights(game));
+      const cargo = forage(random(), forageWeight);
       const id = game.nextItemId++;
       game.items.push({
         id,

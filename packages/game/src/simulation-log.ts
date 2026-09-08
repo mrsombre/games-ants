@@ -423,18 +423,6 @@ export function runLoggedCommand(
   }
 }
 
-export function logIncidentWarning(game: Game, kind: string, seconds: number) {
-  write(game, "incident", { kind, seconds, event: "warned" });
-}
-
-export function logIncidentStarted(game: Game, kind: string, size: number) {
-  write(game, "incident", { kind, size, event: "started" });
-}
-
-export function logIncidentEnded(game: Game, kind: string) {
-  write(game, "incident", { kind, event: "ended" });
-}
-
 export function logConstructionOrdered(game: Game, cell: string, tile: string) {
   write(game, "construction", { cell, tile, event: "build_ordered" });
 }
@@ -523,22 +511,6 @@ function snapshotGame(game: Game) {
     });
   for (const spawn of [...game.spawns].sort((a, b) => a.eggId - b.eggId))
     record({ event: "spawn", egg: spawn.eggId, role: spawn.role, progress: spawn.progress });
-  const narrator = game.narrator;
-  record({
-    event: "incidents",
-    phase: narrator.phase,
-    difficulty: narrator.difficulty,
-    active: narrator.active ?? "none",
-    pending: narrator.pending?.incident ?? "none",
-    pending_size: narrator.pending?.size,
-    pending_at: narrator.pending?.at,
-    boon: narrator.boon?.kind ?? "none",
-    boon_until: narrator.boon?.until,
-    effect: narrator.effect?.kind ?? "none",
-    effect_until: narrator.effect?.until,
-    next_incident_at: narrator.nextIncidentAt,
-    last_peak_at: narrator.lastPeakAt,
-  });
   record({ event: "flood", cells: [...game.flood].sort() });
   record({ event: "finished" });
   return lines;

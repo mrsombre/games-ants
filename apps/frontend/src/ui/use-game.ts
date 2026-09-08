@@ -1,11 +1,11 @@
+import { SIMULATION_STEP } from "@app/game/model";
+import { createGame, stepGame } from "@app/game/simulation";
+import { runLoggedCommand } from "@app/game/simulation-log";
+import { startSpawn } from "@app/game/spawning";
+import { applyTool, type Tool } from "@app/game/tools";
+import type { SpawnRole } from "@app/game/units";
+import { createScene } from "@app/render/scene";
 import { useEffect, useRef, useState } from "react";
-import { SIMULATION_STEP } from "../game/model";
-import { createScene } from "../game/scene";
-import { createGame, stepGame } from "../game/simulation";
-import { runLoggedCommand } from "../game/simulation-log";
-import { startSpawn } from "../game/spawning";
-import { applyTool, type Tool } from "../game/tools";
-import type { SpawnRole } from "../game/units";
 import { GAMEPLAY_TIP_INTERVAL, gameplayTips } from "./gameplay-tips";
 
 export function useGame() {

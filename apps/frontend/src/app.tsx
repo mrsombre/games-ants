@@ -1,9 +1,9 @@
-import { DAY_PHASES, dayPhase } from "./game/day-cycle";
-import { queenOf } from "./game/model";
-import { roles } from "./game/rendering/appearance";
-import { nestCapacity, nestFree, type SpawnBlock, spawnBlock } from "./game/spawning";
-import { foodStock, STORAGE_SLOTS } from "./game/storage";
-import { type SpawnRole, spawnCost } from "./game/units";
+import { roles } from "@app/assets/appearance";
+import { DAY_PHASES, dayPhase } from "@app/game/day-cycle";
+import { queenOf } from "@app/game/model";
+import { nestCapacity, nestFree, type SpawnBlock, spawnBlock } from "@app/game/spawning";
+import { foodStock, STORAGE_SLOTS } from "@app/game/storage";
+import { type SpawnRole, spawnCost } from "@app/game/units";
 import { gameAlert } from "./ui/alert";
 import { CommandPanel } from "./ui/command-panel";
 import { AntHead, EggIcon, FoodIcon, NestIcon } from "./ui/icons";

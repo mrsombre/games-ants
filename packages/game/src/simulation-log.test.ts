@@ -151,7 +151,6 @@ it("prints a fixed snapshot with all requested context and no game mutation", ()
   cargo.location = { kind: "carried", unitId: scout.id };
   const hatch = egg(game, { x: 6, y: 4 });
   game.spawns = [{ eggId: hatch.id, role: "worker", progress: 0.4 }];
-  game.narrator.pending = { incident: "raid", size: 2, at: 20 };
   game.flood = ["8,5"];
   const before = JSON.stringify(game);
 
@@ -184,7 +183,6 @@ it("prints a fixed snapshot with all requested context and no game mutation", ()
   expect(printed.some((line) => line.includes(`snapshot event=spawn egg=${hatch.id} role=worker progress=0.4`))).toBe(
     true,
   );
-  expect(printed.some((line) => line.includes("snapshot event=incidents") && line.includes("pending=raid"))).toBe(true);
   expect(printed.some((line) => line.includes('snapshot event=flood cells=["8,5"]'))).toBe(true);
   expect(JSON.stringify(game)).toBe(before);
 

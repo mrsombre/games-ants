@@ -38,6 +38,15 @@ importers:
 
   apps/frontend:
     dependencies:
+      '@app/assets':
+        specifier: workspace:*
+        version: link:../../packages/assets
+      '@app/game':
+        specifier: workspace:*
+        version: link:../../packages/game
+      '@app/render':
+        specifier: workspace:*
+        version: link:../../packages/render
       pixi.js:
         specifier: ^8.20.1
         version: 8.20.1
@@ -67,7 +76,31 @@ importers:
         specifier: ^8.2.2
         version: 8.2.2(@types/node@24.13.3)(esbuild@0.28.1)
 
+  packages/assets:
+    dependencies:
+      pixi.js:
+        specifier: ^8.20.1
+        version: 8.20.1
+
   packages/common: {}
+
+  packages/game:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.3
+
+  packages/render:
+    dependencies:
+      '@app/assets':
+        specifier: workspace:*
+        version: link:../assets
+      '@app/game':
+        specifier: workspace:*
+        version: link:../game
+      pixi.js:
+        specifier: ^8.20.1
+        version: 8.20.1
 
 packages:
 

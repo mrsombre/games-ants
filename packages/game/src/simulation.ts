@@ -6,7 +6,6 @@ import { advanceEggs } from "./eggs";
 import { floodedCells } from "./flood";
 import { dropCargo } from "./items";
 import { type Game, type GameEvent, queenOf, SIMULATION_STEP } from "./model";
-import { advanceNarrator, createNarrator, settleIncidents } from "./narrator";
 import { move, Navigation } from "./navigation";
 import { advanceNesting } from "./nesting";
 import { logArrived, logTaskEnded, logUnitAttack, logUnitDied } from "./simulation-log";
@@ -15,7 +14,7 @@ import { assignTasks } from "./tasks";
 import { createUnit, present, type SpawnRole } from "./units";
 import { interruptJob, performJob, prepareJobs } from "./work";
 
-export function createGame(random: () => number = Math.random, seed = Math.floor(random() * 4294967296)): Game {
+export function createGame(random: () => number = Math.random): Game {
   const initialRoles: SpawnRole[] = ["worker", "worker", "worker", "scout", "warrior"];
   const cells = Object.keys(initialColony)
     .filter((id) => id !== cellKey(HOME))
@@ -44,7 +43,6 @@ export function createGame(random: () => number = Math.random, seed = Math.floor
       { id: 3, kind: "food", food: "apple", portions: 1, location: { kind: "cell", cell: { x: 7, y: 2 } } },
     ],
     spawns: [],
-    narrator: createNarrator(seed),
     eggTimer: 0,
     nestTimer: 0,
     nextItemId: 4,
@@ -92,7 +90,6 @@ export function stepGame(game: Game, seconds = SIMULATION_STEP, random: () => nu
   const events: GameEvent[] = [];
   game.elapsedSeconds += seconds;
   const queenWasAlive = (queenOf(game)?.hp ?? 0) > 0;
-  advanceNarrator(game, seconds, events);
   advanceEggs(game, seconds);
   const navigation = new Navigation(game.colony, floodedCells(game));
   prepareJobs(game, seconds, navigation);
@@ -122,6 +119,5 @@ export function stepGame(game: Game, seconds = SIMULATION_STEP, random: () => nu
   game.units = game.units.filter((unit) => unit.hp > 0 || unit.role === "queen");
   advanceConstruction(game, seconds);
   advanceSpawns(game, seconds);
-  settleIncidents(game, events);
   return events;
 }

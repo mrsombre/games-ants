@@ -144,19 +144,17 @@ it("halts invaders at a soldier and cannot cross occupied cells alive", () => {
   expect([soldier.hp, enemy.hp]).toEqual([16, 16]);
   expect(enemy.cell).toEqual({ x: 8, y: 2 });
 });
-it("steals a reachable egg, escapes through the entrance, cancels hatching and ends the raid", () => {
+it("steals a reachable egg, escapes through the entrance, cancels hatching", () => {
   const game = world();
   const item = egg(game, { x: 9, y: 3 });
   game.spawns = [{ eggId: item.id, role: "worker", progress: 0.5 }];
   const thief = addUnit(game, "worker", { x: 9, y: 3 }, "raiders");
-  game.narrator.active = "thieves";
   stepGame(game);
   expect(item.location).toEqual({ kind: "carried", unitId: thief.id });
   expect(game.spawns).toEqual([]);
-  const events = advance(game, 20);
+  advance(game, 20);
   expect(game.units).not.toContain(thief);
   expect(game.items.some((entry) => entry.id === item.id)).toBe(false);
-  expect(events).toContainEqual({ kind: "incident-ended", incident: "thieves" });
 });
 it("fights at the queen even while stealing, emits death once and stops egg laying", () => {
   const game = world();
@@ -164,7 +162,6 @@ it("fights at the queen even while stealing, emits death once and stops egg layi
   if (!queen) throw new Error("queen");
   queen.hp = 1;
   const enemy = addUnit(game, "warrior", queen.cell, "raiders");
-  game.narrator.active = "raid";
   const events = advance(game, 1);
   expect(queen.hp).toBe(0);
   expect(queenOf(game)).toBe(queen);
@@ -172,9 +169,6 @@ it("fights at the queen even while stealing, emits death once and stops egg layi
   events.push(...advance(game, 35));
   expect(game.items).toEqual([]);
   expect(events.filter((event) => event.kind === "queen-died")).toHaveLength(1);
-  expect(events.filter((event) => event.kind === "incident-ended")).toEqual([
-    { kind: "incident-ended", incident: "raid" },
-  ]);
 });
 
 it("rejects invalid blueprints without changing state and increments visual revision on valid changes", () => {
@@ -218,20 +212,9 @@ it("lets an evading hauler walk through an enemy cell without dropping its item 
   expect(worker.route).not.toEqual([]);
   expect(worker.hp).toBe(8);
 });
-it("emits only the scheduled incident events and gives subsequent waves fresh identifiers", () => {
-  const game = createGame(() => 0.5, 7);
-  expect(stepGame(game, 0.05, () => 0.5)).toEqual([]);
-  game.narrator.pending = { incident: "raid", size: 2, at: 0 };
-  expect(stepGame(game, 0.05, () => 0.5)).toEqual([{ kind: "incident-started", incident: "raid", size: 2 }]);
-  const firstIds = game.units.map((unit) => unit.id);
-  game.narrator.pending = { incident: "thieves", size: 2, at: 0 };
-  stepGame(game, 0.05, () => 0.5);
-  expect(new Set(game.units.map((unit) => unit.id)).size).toBe(game.units.length);
-  expect(Math.min(...game.units.slice(firstIds.length).map((unit) => unit.id))).toBeGreaterThan(Math.max(...firstIds));
-});
 
 it.each([1, 17, 73])(
-  "preserves world invariants and food accounting across jobs, raids and hatch orders (seed %s)",
+  "preserves world invariants and food accounting across jobs and hatch orders (seed %s)",
   (seed) => {
     let state = seed;
     const random = () => {
@@ -243,7 +226,6 @@ it.each([1, 17, 73])(
     expect(new Set(initialPositions).size).toBe(6);
     expect(game.units.filter((unit) => unit.faction === "colony")).toHaveLength(6);
     expect(game.items[0]?.kind).toBe("egg");
-    game.narrator.nextIncidentAt = 1;
     let balance = 2,
       maxUnitId = Math.max(...game.units.map((unit) => unit.id)),
       maxItemId = 1;
@@ -258,14 +240,7 @@ it.each([1, 17, 73])(
       if (tick % 100 === 0 && !startSpawn(game, "worker", random)) balance--;
       for (const event of stepGame(game, 0.05, random)) {
         if (event.kind === "scout-delivered") balance += event.food;
-        expect([
-          "scout-delivered",
-          "food-discarded",
-          "incident-warned",
-          "incident-started",
-          "incident-ended",
-          "queen-died",
-        ]).toContain(event.kind);
+        expect(["scout-delivered", "food-discarded", "queen-died"]).toContain(event.kind);
       }
       for (const unit of game.units) {
         if (!lastUnitIds.has(unit.id)) {
@@ -440,23 +415,9 @@ it("walks a wounded raider off the map and a wounded ant back home", () => {
   expect(ant.hp).toBe(8);
   expect(ant.fleeing).toBe(false);
 });
-
-it("walks the predator off the map once its term is over and closes the incident there", () => {
-  const game = world();
-  const spider = addUnit(game, "spider", { x: 3, y: 0 }, "raiders");
-  game.narrator.active = "predator";
-  game.narrator.effect = { kind: "predator", until: game.elapsedSeconds + 1 };
-  advance(game, 0.5);
-  expect(spider.job).toEqual({ kind: "guard", destination: SURFACE_POST });
-  const events = advance(game, 30);
-  expect(game.units.filter((unit) => unit.faction === "raiders")).toEqual([]);
-  expect(events.at(-1)).toEqual({ kind: "incident-ended", incident: "predator" });
-  expect(game.narrator.active).toBeNull();
-});
 it("lets a raid wave pass the posted predator and enter the nest", () => {
   const game = world();
   const spider = addUnit(game, "spider", { x: 8, y: 0 }, "raiders");
-  game.narrator.effect = { kind: "predator", until: 1000 };
   const raider = addUnit(game, "warrior", { x: 14, y: 0 }, "raiders");
   advance(game, 5);
   // The raider crossed the post at (8,0) on its way down: an ally never blocks the front.
@@ -464,4 +425,21 @@ it("lets a raid wave pass the posted predator and enter the nest", () => {
   expect(raider.job).toMatchObject({ kind: "attack" });
   expect(spider.cell).toEqual(SURFACE_POST);
   expect(spider.hp).toBe(spider.maxHp);
+});
+
+it("keeps a colony working for a full day without spawning threats or flooding", () => {
+  const game = createGame(() => 0.5);
+  expect(planBuild(game, 8, 6, "corridor")).toBeNull();
+  const initialHealth = game.units.map((unit) => unit.hp);
+  for (let tick = 0; tick < 12000; tick++) {
+    const events = stepGame(game, 0.05, () => 0.5);
+    expect(events.every((event) => event.kind === "scout-delivered" || event.kind === "food-discarded")).toBe(true);
+    expect(game.units.every((unit) => unit.faction === "colony")).toBe(true);
+    expect(game.flood).toEqual([]);
+  }
+  expect(game.elapsedSeconds).toBeCloseTo(600, 6);
+  expect(game.colony["8,6"]).toBe("corridor");
+  expect(game.deliveries).toBeGreaterThan(0);
+  expect(foodStock(game)).toBeGreaterThan(2);
+  expect(game.units.map((unit) => unit.hp)).toEqual(initialHealth);
 });

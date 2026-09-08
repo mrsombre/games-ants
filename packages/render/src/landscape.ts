@@ -1,8 +1,8 @@
+import autumn from "@app/assets/forests/autumn.svg?url";
+import enchanted from "@app/assets/forests/enchanted.svg?url";
+import summer from "@app/assets/forests/summer.svg?url";
+import { dayPhase } from "@app/game/day-cycle";
 import { Assets, Container, Graphics, Sprite } from "pixi.js";
-import { dayPhase } from "../day-cycle";
-import autumn from "./forests/autumn.svg?url";
-import enchanted from "./forests/enchanted.svg?url";
-import summer from "./forests/summer.svg?url";
 import { CELL, GROUND, HEIGHT, HORIZON, WIDTH } from "./layout";
 
 const random = (n: number) => {

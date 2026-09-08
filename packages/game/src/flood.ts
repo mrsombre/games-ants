@@ -5,8 +5,6 @@ import { nestCells } from "./nesting";
 import { logItemDestroyed, logSpawnCancelled } from "./simulation-log";
 import { interruptJob } from "./work";
 
-export const FLOOD_SECONDS = 120;
-
 export const isFlooded = (game: Game, id: string) => game.flood.some((cell) => cell === id);
 export const floodedCells = (game: Game): ReadonlySet<string> => new Set<string>(game.flood);
 
@@ -30,7 +28,6 @@ export function startFlood(game: Game, size: number, roll: number) {
   const cells = floodTargets(game, size, roll);
   if (!cells.length) return 0;
   game.flood = cells;
-  game.narrator.effect = { kind: "flood", until: game.elapsedSeconds + FLOOD_SECONDS };
   const drowned = new Set(
     game.items
       .filter((item) => item.location.kind === "cell" && isFlooded(game, cellKey(item.location.cell)))

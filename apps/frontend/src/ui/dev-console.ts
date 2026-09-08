@@ -1,21 +1,9 @@
-import type { BuildTool } from "../game/colony";
-import type { DayPhaseId } from "../game/day-cycle";
-import {
-  type BuildOptions,
-  buildCell,
-  clearBuilt,
-  jumpToPhase,
-  pauseNarrator,
-  setDifficulty,
-  setFood,
-  skipTime,
-  spawnUnit,
-  startIncidentNow,
-} from "../game/debug";
-import type { Game, GameEvent } from "../game/model";
-import type { IncidentKind } from "../game/narrator";
-import { attachSimulationLog, getSimulationLog, runLoggedCommand, snapshot } from "../game/simulation-log";
-import type { Faction, Role } from "../game/units";
+import type { BuildTool } from "@app/game/colony";
+import type { DayPhaseId } from "@app/game/day-cycle";
+import { type BuildOptions, buildCell, clearBuilt, jumpToPhase, setFood, skipTime, spawnUnit } from "@app/game/debug";
+import type { Game, GameEvent } from "@app/game/model";
+import { attachSimulationLog, getSimulationLog, runLoggedCommand, snapshot } from "@app/game/simulation-log";
+import type { Faction, Role } from "@app/game/units";
 import { eventMessage } from "./event-message";
 
 type Command = { readonly signature: string; readonly about: string; readonly run: (...args: never[]) => unknown };
@@ -47,24 +35,6 @@ export function installDevConsole(game: Game, refresh: () => void, showMessage: 
           for (const command of Object.values(commands)) console.log(`${command.signature} — ${command.about}`);
           return null;
         },
-      ),
-    },
-    pause: {
-      signature: "dev.pause()",
-      about: "Заглушить нарратора (темп 0)",
-      run: commanded(
-        "pause",
-        () => ({}),
-        () => pauseNarrator(game),
-      ),
-    },
-    difficulty: {
-      signature: "dev.difficulty(n)",
-      about: "Задать множитель темпа нарратора: конечное неотрицательное число",
-      run: commanded(
-        "difficulty",
-        (value: number) => ({ value }),
-        (value: number) => setDifficulty(game, value),
       ),
     },
     day: {
@@ -126,20 +96,6 @@ export function installDevConsole(game: Game, refresh: () => void, showMessage: 
         "clear",
         (x: number, y: number, options?: BuildOptions) => ({ x, y, options }),
         (x: number, y: number, options?: BuildOptions) => clearBuilt(game, x, y, options),
-      ),
-    },
-    incident: {
-      signature: "dev.incident(kind, size?)",
-      about: "Запустить инцидент немедленно; размер по умолчанию — штатная формула инцидента",
-      run: commanded(
-        "incident",
-        (kind: IncidentKind, size?: number) => ({ kind, size }),
-        (kind: IncidentKind, size?: number) => {
-          const events: GameEvent[] = [];
-          const reason = startIncidentNow(game, kind, events, size);
-          for (const event of events) showMessage(eventMessage(event));
-          return reason;
-        },
       ),
     },
     snapshot: {

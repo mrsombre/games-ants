@@ -1,4 +1,4 @@
-import { type Cell, COLS, ROWS } from "../cells";
+import { type Cell, COLS, ROWS } from "@app/game/cells";
 
 export const CELL = 52;
 export const WIDTH = COLS * CELL;

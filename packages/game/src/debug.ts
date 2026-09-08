@@ -1,25 +1,13 @@
 import { COLS, cellKey, isCell, key } from "./cells";
 import { type BuildTool, placementError } from "./colony";
 import { finishBlueprint, placeBlueprint, plannedColony } from "./construction";
-import { DAY_PHASE_IDS, DAY_PHASE_SECONDS, type DayPhaseId } from "./day-cycle";
+import { DAY_PHASE_IDS, DAY_PHASE_SECONDS, DAY_SECONDS, type DayPhaseId } from "./day-cycle";
 import { demolitionError, razeCell } from "./demolition";
 import { type Game, type GameEvent, SIMULATION_STEP } from "./model";
-import { DAY_SECONDS, type IncidentKind, incidents, startIncident } from "./narrator";
 import { stepGame } from "./simulation";
 import { logItemSpawned, logUnitSpawned } from "./simulation-log";
 import { consumeFood, foodStock, foodStorageCells, freeSlots, storageCapacity } from "./storage";
 import { createUnit, type Faction, type Role, traits } from "./units";
-
-export function setDifficulty(game: Game, value: number): string | null {
-  // Number.isFinite also rejects the non-numbers the console can pass around the type.
-  if (!Number.isFinite(value) || value < 0) return "Темп нарратора: нужно конечное неотрицательное число";
-  game.narrator.difficulty = value;
-  return null;
-}
-
-export function pauseNarrator(game: Game): string | null {
-  return setDifficulty(game, 0);
-}
 
 export function jumpToPhase(game: Game, day: number, phase: DayPhaseId): string | null {
   if (!Number.isInteger(day) || day < 1) return "Телепорт времени: день — целое число от 1";
@@ -29,13 +17,6 @@ export function jumpToPhase(game: Game, day: number, phase: DayPhaseId): string 
   const delta = target - game.elapsedSeconds;
   if (delta <= 0) return "Телепорт времени: только вперёд, назад и на месте нельзя";
   game.elapsedSeconds = target;
-  // Absolute narrator deadlines move with the clock; relative timers keep their remaining time.
-  const narrator = game.narrator;
-  narrator.nextIncidentAt += delta;
-  narrator.lastPeakAt += delta;
-  if (narrator.pending) narrator.pending.at += delta;
-  if (narrator.boon) narrator.boon.until += delta;
-  if (narrator.effect) narrator.effect.until += delta;
   return null;
 }
 
@@ -44,15 +25,6 @@ export function skipTime(game: Game, seconds: number, events: GameEvent[]): stri
   if (seconds > DAY_SECONDS) return `Перемотка: не больше ${DAY_SECONDS} с за вызов`;
   for (let step = 0; step < Math.round(seconds / SIMULATION_STEP); step++)
     events.push(...stepGame(game, SIMULATION_STEP));
-  return null;
-}
-
-export function startIncidentNow(game: Game, kind: IncidentKind, events: GameEvent[], size?: number): string | null {
-  const incident = incidents.find((entry) => entry.kind === kind);
-  if (!incident) return `Инцидент: неизвестный вид, нужен один из ${incidents.map((entry) => entry.kind).join(", ")}`;
-  const wanted = size ?? incident.size(game);
-  if (!Number.isInteger(wanted) || wanted < 1) return "Инцидент: размер — целое число от 1";
-  startIncident(game, kind, wanted, events);
   return null;
 }
 

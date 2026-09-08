@@ -1,0 +1,38 @@
+{
+  "name": "@app/game",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./cells": "./src/cells.ts",
+    "./colony": "./src/colony.ts",
+    "./combat": "./src/combat.ts",
+    "./construction": "./src/construction.ts",
+    "./day-cycle": "./src/day-cycle.ts",
+    "./debug": "./src/debug.ts",
+    "./demolition": "./src/demolition.ts",
+    "./eggs": "./src/eggs.ts",
+    "./flood": "./src/flood.ts",
+    "./items": "./src/items.ts",
+    "./jobs": "./src/jobs.ts",
+    "./model": "./src/model.ts",
+    "./navigation": "./src/navigation.ts",
+    "./nesting": "./src/nesting.ts",
+    "./raids": "./src/raids.ts",
+    "./simulation-log": "./src/simulation-log.ts",
+    "./simulation": "./src/simulation.ts",
+    "./spawning": "./src/spawning.ts",
+    "./storage": "./src/storage.ts",
+    "./tasks": "./src/tasks.ts",
+    "./tools": "./src/tools.ts",
+    "./units": "./src/units.ts",
+    "./work": "./src/work.ts",
+    "./foraging": "./src/foraging.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3"
+  }
+}

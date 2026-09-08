@@ -1,4 +1,4 @@
-import type { SpawnBlock } from "../game/spawning";
+import type { SpawnBlock } from "@app/game/spawning";
 
 export const spawnBlockLabel: Record<SpawnBlock, string> = {
   nest: "В гнезде нет свободного места — построй или расширь гнездо",

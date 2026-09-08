@@ -1,0 +1,21 @@
+{
+  "name": "@app/render",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./colony": "./src/colony.ts",
+    "./creatures": "./src/creatures.ts",
+    "./landscape": "./src/landscape.ts",
+    "./layout": "./src/layout.ts",
+    "./scene": "./src/scene.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@app/game": "workspace:*",
+    "@app/assets": "workspace:*",
+    "pixi.js": "^8.20.1"
+  }
+}

@@ -6,7 +6,6 @@ import { isFlooded } from "./flood";
 import { canCarry, itemReserved } from "./items";
 import type { Job } from "./jobs";
 import { type Game, homeOf } from "./model";
-import { forageAllowed } from "./narrator";
 import { type Navigation, setRoute } from "./navigation";
 import { logTaskEnded, logTaskStarted } from "./simulation-log";
 import { spawnClaimed } from "./spawning";
@@ -47,7 +46,7 @@ function availableOffers(game: Game, faction: Faction, navigation: Navigation, r
           offers.push(offer({ kind: "build", target, stand }, stand, 100, [`build:${target}:${slot}`]));
       }
     }
-    if (storageCapacity(game) > 0 && forageAllowed(game)) {
+    if (storageCapacity(game) > 0) {
       const exit = { x: random() < 0.5 ? -1 : COLS, y: 0 };
       offers.push(offer({ kind: "forage", phase: "outbound", exit, remaining: 0 }, exit, 80));
     }
@@ -91,13 +90,10 @@ function availableOffers(game: Game, faction: Faction, navigation: Navigation, r
 }
 const surfaceEnemy = (game: Game, unit: Unit) =>
   game.units.some((other) => present(other) && other.faction !== unit.faction && other.cell.y === 0);
-// A lasting threat keeps its surface unit on watch; once the effect is over it takes the exit.
-const surfacePost = (game: Game, unit: Unit) => isSurface(unit) && !!game.narrator.effect && !surfaceEnemy(game, unit);
+const surfacePost = (game: Game, unit: Unit) => isSurface(unit) && !surfaceEnemy(game, unit);
 function surfaceOffer(game: Game, unit: Unit) {
   if (!isSurface(unit) || surfaceEnemy(game, unit)) return;
-  return surfacePost(game, unit)
-    ? offer({ kind: "guard", destination: SURFACE_POST }, SURFACE_POST, 10)
-    : offer({ kind: "leave", destination: EXIT }, EXIT, 10);
+  return offer({ kind: "guard", destination: SURFACE_POST }, SURFACE_POST, 10);
 }
 function eligible(game: Game, unit: Unit, job: Job) {
   if (!traits[unit.role].jobs.includes(job.kind)) return false;

@@ -1,8 +1,8 @@
+import { COLS, ENTRANCE, key, point, ROWS } from "@app/game/cells";
+import { type Colony, connected, placementError, type RoomTile, roomSpan } from "@app/game/colony";
+import { STORAGE_SLOTS } from "@app/game/storage";
+import type { Tool } from "@app/game/tools";
 import type { Graphics } from "pixi.js";
-import { COLS, ENTRANCE, key, point, ROWS } from "../cells";
-import { type Colony, connected, placementError, type RoomTile, roomSpan } from "../colony";
-import { STORAGE_SLOTS } from "../storage";
-import type { Tool } from "../tools";
 import { CELL, SURFACE } from "./layout";
 
 const passages = [

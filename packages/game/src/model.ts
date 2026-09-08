@@ -2,16 +2,12 @@ import { type Cell, type CellId, HOME } from "./cells";
 import type { Colony } from "./colony";
 import type { Blueprint } from "./construction";
 import type { FoodKind, Item } from "./items";
-import type { IncidentKind, Narrator } from "./narrator";
 import type { Spawn } from "./spawning";
 import type { Unit } from "./units";
 
 export type GameEvent =
   | { kind: "scout-delivered"; scoutId: number; cargo: FoodKind; food: number }
   | { kind: "food-discarded"; scoutId: number; cargo: FoodKind }
-  | { kind: "incident-warned"; incident: IncidentKind; seconds: number }
-  | { kind: "incident-started"; incident: IncidentKind; size: number }
-  | { kind: "incident-ended"; incident: IncidentKind }
   | { kind: "queen-died" };
 export type Game = {
   elapsedSeconds: number;
@@ -21,7 +17,6 @@ export type Game = {
   units: Unit[];
   items: Item[];
   spawns: Spawn[];
-  narrator: Narrator;
   eggTimer: number;
   nestTimer: number;
   nextItemId: number;

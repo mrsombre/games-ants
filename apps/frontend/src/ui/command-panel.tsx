@@ -1,10 +1,10 @@
-import type { BuildTool } from "../game/colony";
-import { buildSeconds } from "../game/construction";
-import { roles } from "../game/rendering/appearance";
-import type { SpawnBlock } from "../game/spawning";
-import { STORAGE_SLOTS } from "../game/storage";
-import type { Tool } from "../game/tools";
-import { type SpawnRole, spawnCost } from "../game/units";
+import { roles } from "@app/assets/appearance";
+import type { BuildTool } from "@app/game/colony";
+import { buildSeconds } from "@app/game/construction";
+import type { SpawnBlock } from "@app/game/spawning";
+import { STORAGE_SLOTS } from "@app/game/storage";
+import type { Tool } from "@app/game/tools";
+import { type SpawnRole, spawnCost } from "@app/game/units";
 import { AntHead, FoodIcon } from "./icons";
 import { spawnBlockLabel } from "./spawn-block";
 

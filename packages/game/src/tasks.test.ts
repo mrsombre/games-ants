@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { COLS, cellKey } from "./cells";
+import { cellKey } from "./cells";
 import { planBuild } from "./construction";
 import { Navigation } from "./navigation";
 import { assignTasks, jobValid, SURFACE_POST } from "./tasks";
@@ -353,13 +353,12 @@ it("keeps a raider waiting for an unreachable opponent instead of leaving or sta
   expect(raider.route).toEqual([]);
 });
 
-function stalked(post = true) {
+function stalked() {
   const game = world();
   const spider = addUnit(game, "spider", { x: 3, y: 0 }, "raiders");
-  if (post) game.narrator.effect = { kind: "predator", until: 999 };
   return { game, spider };
 }
-it("posts a surface raider above the entrance instead of sending it away while its threat lasts", () => {
+it("posts a surface raider above the entrance when no prey is on the surface", () => {
   const { game, spider } = stalked();
   auction(game, "raiders");
   expect(spider.job).toEqual({ kind: "guard", destination: SURFACE_POST });
@@ -369,20 +368,6 @@ it("posts a surface raider above the entrance instead of sending it away while i
   spider.job = null;
   auction(game, "raiders");
   expect(spider.job).toEqual({ kind: "guard", destination: SURFACE_POST });
-});
-it("sends the surface raider to the exit once its threat has expired", () => {
-  const { game, spider } = stalked(false);
-  auction(game, "raiders");
-  expect(game.units.some((unit) => unit.faction === "colony")).toBe(true);
-  expect(spider.job).toEqual({ kind: "leave", destination: { x: -1, y: 0 } });
-  expect(spider.route.at(-1)).toEqual({ x: -1, y: 0 });
-});
-it("drops the surface post as soon as its threat is over even mid-watch", () => {
-  const { game, spider } = stalked();
-  auction(game, "raiders");
-  expect(jobValid(game, spider)).toBe(true);
-  game.narrator.effect = null;
-  expect(jobValid(game, spider)).toBe(false);
 });
 it("keeps a surface raider on row 0: it takes the target above ground and ignores the one below", () => {
   const { game, spider } = stalked();
@@ -405,21 +390,4 @@ it("drops the surface post when prey comes up to row 0", () => {
   expect(jobValid(game, spider)).toBe(true);
   addUnit(game, "scout", { x: 6, y: 0 });
   expect(jobValid(game, spider)).toBe(false);
-});
-it("offers foraging under a predator only with a colony warrior standing on the surface", () => {
-  const game = world();
-  // Past the right edge of the strip the predator is out of reach, so interception cannot outbid foraging.
-  addUnit(game, "spider", { x: COLS + 1, y: 0 }, "raiders");
-  const guardian = addUnit(game, "warrior", { x: 9, y: 3 });
-  const scout = addUnit(game, "scout");
-  const rebid = () => {
-    scout.job = null;
-    auction(game);
-    return game.units.find((unit) => unit.id === scout.id)?.job?.kind;
-  };
-  expect(rebid()).toBe("wander");
-  guardian.cell = { x: 9, y: 0 };
-  expect(rebid()).toBe("forage");
-  guardian.hp = 0;
-  expect(rebid()).toBe("wander");
 });

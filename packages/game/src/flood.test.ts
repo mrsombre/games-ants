@@ -2,10 +2,8 @@ import { expect, it } from "vitest";
 import { cellKey } from "./cells";
 import { demolitionError } from "./demolition";
 import { eggStorageCells, queenCells } from "./eggs";
-import { FLOOD_SECONDS, floodedCells, floodTargets, isFlooded, recedeFlood, startFlood } from "./flood";
+import { floodedCells, floodTargets, isFlooded, recedeFlood, startFlood } from "./flood";
 import { pickUp } from "./items";
-import type { GameEvent } from "./model";
-import { settleIncidents } from "./narrator";
 import { Navigation } from "./navigation";
 import { nestFree, spawnableEggs } from "./spawning";
 import { foodStock, foodStorageCells, storageCapacity } from "./storage";
@@ -42,7 +40,6 @@ it("spares the entrance rows and the queen room, and finds nothing in a shallow 
   expect(floodTargets(game, 3, 0.5)).toEqual([]);
   expect(startFlood(game, 3, 0.5)).toBe(0);
   expect(game.flood).toEqual([]);
-  expect(game.narrator.effect).toBeNull();
 });
 it("drowns the food and the eggs of the flooded cells and cancels their hatch orders", () => {
   const game = cellar(world(), "nest");
@@ -138,23 +135,11 @@ it("rejects building, wandering and nesting on water and keeps guards off it", (
   assignTasks(game, "colony", new Navigation(game.colony, new Set(game.flood)), new Set(), () => 0.5);
   expect(warrior.job?.kind === "guard" && cellKey(warrior.job.destination)).not.toBe("8,4");
 });
-it("recedes after two minutes and leaves the cells usable but empty", () => {
+it("recedes explicitly and leaves the cells usable but empty", () => {
   const game = cellar(world());
   food(game, { x: 6, y: 7 });
-  game.narrator.active = "flood";
   expect(startFlood(game, 3, 0)).toBe(3);
-  expect(game.narrator.effect).toEqual({ kind: "flood", until: FLOOD_SECONDS });
-  const early: GameEvent[] = [];
-  game.elapsedSeconds = FLOOD_SECONDS - 0.05;
-  settleIncidents(game, early);
-  expect(early).toEqual([]);
-  expect(game.flood).toHaveLength(3);
-  const events: GameEvent[] = [];
-  game.elapsedSeconds = FLOOD_SECONDS;
-  settleIncidents(game, events);
-  expect(events).toEqual([{ kind: "incident-ended", incident: "flood" }]);
-  expect(game.narrator.effect).toBeNull();
-  expect(game.narrator.active).toBeNull();
+  recedeFlood(game);
   expect(game.flood).toEqual([]);
   expect(game.colony["6,7"]).toBe("storage");
   expect(foodStock(game)).toBe(0);

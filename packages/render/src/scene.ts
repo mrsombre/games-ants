@@ -1,13 +1,13 @@
+import { type Cell, isCell } from "@app/game/cells";
+import type { Colony } from "@app/game/colony";
+import { plannedColony } from "@app/game/construction";
+import type { Game } from "@app/game/model";
+import { type Tool, toolError } from "@app/game/tools";
 import { Application, Graphics } from "pixi.js";
-import { type Cell, isCell } from "./cells";
-import type { Colony } from "./colony";
-import { plannedColony } from "./construction";
-import type { Game } from "./model";
-import { drawColony, drawWater } from "./rendering/colony";
-import { createCreatures } from "./rendering/creatures";
-import { createLandscape } from "./rendering/landscape";
-import { CELL, HEIGHT, SURFACE, screenCell, WIDTH } from "./rendering/layout";
-import { type Tool, toolError } from "./tools";
+import { drawColony, drawWater } from "./colony";
+import { createCreatures } from "./creatures";
+import { createLandscape } from "./landscape";
+import { CELL, HEIGHT, SURFACE, screenCell, WIDTH } from "./layout";
 
 export async function createScene(host: HTMLElement, onCellClick: (x: number, y: number) => void) {
   const app = new Application();

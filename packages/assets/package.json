@@ -1,0 +1,18 @@
+{
+  "name": "@app/assets",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./appearance": "./src/appearance.ts",
+    "./creatures": "./src/creatures.ts",
+    "./food": "./src/food.ts",
+    "./queen": "./src/queen.ts",
+    "./forests/*.svg": "./src/forests/*.svg"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pixi.js": "^8.20.1"
+  }
+}
