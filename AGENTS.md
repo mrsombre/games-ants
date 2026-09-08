@@ -26,7 +26,9 @@ This scaffold has no Telegram integration.
 - Use pnpm. Keep the workspace package list explicit and retain the dependency release-age policy.
 - Run pnpm types after changes to Wrangler variables, secrets or bindings; declare local variables
   in wrangler.jsonc as well. Generated worker-configuration.d.ts stays ignored.
-- Finish changes with pnpm check, pnpm type-check and pnpm test. Check pnpm build after build or UI changes.
+- Verify small visual adjustments in the running dev server.
+- Run pnpm check, pnpm type-check, pnpm test and pnpm build only before an explicitly requested
+  commit containing significant source-code changes (behavior, contracts, architecture or build configuration).
 - Keep frontend and Worker development on one origin through @cloudflare/vite-plugin.
 - Deploy only when explicitly requested. Local development and preview are allowed.
 
