@@ -10,6 +10,8 @@ export default defineConfig({
       configPath: fileURLToPath(new URL("../../wrangler.jsonc", import.meta.url)),
     }),
   ],
+  // lab.html and lab/ stay out of the input list: they are served in development only.
+  build: { rollupOptions: { input: "index.html" } },
   server: { host: "127.0.0.1", port: 5173, strictPort: true },
   preview: { host: "127.0.0.1", port: 4173, strictPort: true },
 });
